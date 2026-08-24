@@ -3,7 +3,7 @@
 import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Lock, Mail, BookOpen, ArrowRight, ShieldCheck, Loader2 } from 'lucide-react';
+import { Lock, User, BookOpen, ArrowRight, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
 
@@ -13,40 +13,58 @@ function LoginForm() {
   const redirectTo = searchParams.get('redirectTo') || '/admin';
   const toast = useToast();
 
-  const [email, setEmail] = useState('');
+  const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!usernameOrEmail.trim() || !password.trim()) {
+      toast.error('กรุณากรอกข้อมูลให้ครบถ้วน', 'โปรดระบุชื่อผู้ใช้และรหัสผ่าน');
+      return;
+    }
+
     setLoading(true);
 
     try {
       const supabase = createClient();
+      
+      // If user enters "nasdking123" without domain, map to email
+      let emailToAuth = usernameOrEmail.trim();
+      if (!emailToAuth.includes('@')) {
+        emailToAuth = `${emailToAuth}@school.ac.th`;
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: emailToAuth,
+        password: password.trim(),
       });
 
       if (error) {
-        toast.error('เข้าสู่ระบบไม่สำเร็จ', error.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+        // Try fallback email nasdking123@gmail.com
+        if (!usernameOrEmail.includes('@')) {
+          const { data: data2, error: error2 } = await supabase.auth.signInWithPassword({
+            email: `${usernameOrEmail.trim()}@gmail.com`,
+            password: password.trim(),
+          });
+          if (!error2 && data2.session) {
+            toast.success('เข้าสู่ระบบสำเร็จ', 'ยินดีต้อนรับเข้าสู่ระบบจัดการหลังบ้าน');
+            router.push(redirectTo);
+            router.refresh();
+            return;
+          }
+        }
+        toast.error('เข้าสู่ระบบไม่สำเร็จ', error.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
       } else if (data.session) {
         toast.success('เข้าสู่ระบบสำเร็จ', 'ยินดีต้อนรับเข้าสู่ระบบจัดการหลังบ้าน');
         router.push(redirectTo);
         router.refresh();
       }
     } catch {
-      // In dev mode, allow quick bypass if testing
-      toast.success('เข้าสู่ระบบสำเร็จ', 'เข้าสู่ระบบในโหมดผู้ดูแลระบบ');
-      router.push(redirectTo);
+      toast.error('เกิดข้อผิดพลาด', 'โปรดตรวจสอบชื่อผู้ใช้และรหัสผ่านอีกครั้ง');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleDemoFill = () => {
-    setEmail('kruking.admin@school.ac.th');
-    setPassword('KruKingSecure2026!');
   };
 
   return (
@@ -60,7 +78,7 @@ function LoginForm() {
           เข้าสู่ระบบผู้ดูแลหลังบ้าน
         </h1>
         <p className="text-xs text-slate-500">
-          แพลตฟอร์มศูนย์รวมสื่อการเรียนรู้และจัดการเนื้อหา &quot;ห้องสื่อครูคิง&quot;
+          ระบบจัดการเว็บไซต์ &quot;ห้องสื่อครูคิง&quot; (Admin Control Panel)
         </p>
       </div>
 
@@ -69,16 +87,17 @@ function LoginForm() {
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
-              อีเมลผู้ดูแลระบบ (Email)
+              ชื่อผู้ใช้งาน หรือ อีเมล (Username / Email) *
             </label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@school.ac.th"
+                type="text"
+                value={usernameOrEmail}
+                onChange={(e) => setUsernameOrEmail(e.target.value)}
+                placeholder="nasdking123"
                 required
+                autoComplete="username"
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -86,7 +105,7 @@ function LoginForm() {
 
           <div>
             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
-              รหัสผ่าน (Password)
+              รหัสผ่าน (Password) *
             </label>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -94,8 +113,9 @@ function LoginForm() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="••••••••••••"
                 required
+                autoComplete="current-password"
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -103,8 +123,8 @@ function LoginForm() {
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs shadow-md shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            disabled={loading || !usernameOrEmail.trim() || !password.trim()}
+            className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs shadow-md shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
           >
             {loading ? (
               <>
@@ -119,27 +139,15 @@ function LoginForm() {
             )}
           </button>
         </form>
-
-        {/* Quick Demo Fill */}
-        <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-          <button
-            type="button"
-            onClick={handleDemoFill}
-            className="w-full py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-            <span>กรอกข้อมูลตัวอย่างสำหรับทดสอบ</span>
-          </button>
-        </div>
       </div>
 
-      {/* Back Link */}
+      {/* Back to Home Link */}
       <div className="text-center">
         <Link
           href="/"
           className="text-xs text-slate-500 hover:text-blue-600 transition-colors"
         >
-          ← กลับสู่หน้าหลักของเว็บไซต์
+          ← กลับสู่หน้าหลักเว็บไซต์
         </Link>
       </div>
     </div>
@@ -149,7 +157,12 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
-      <Suspense fallback={<div className="flex items-center justify-center p-12"><Loader2 className="w-8 h-8 text-blue-600 animate-spin" /></div>}>
+      <Suspense fallback={
+        <div className="flex items-center gap-2 text-slate-500 text-sm">
+          <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+          <span>กำลังโหลดหน้าเข้าสู่ระบบ...</span>
+        </div>
+      }>
         <LoginForm />
       </Suspense>
     </div>

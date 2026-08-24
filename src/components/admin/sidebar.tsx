@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   Globe,
@@ -21,8 +21,11 @@ import {
   ChevronRight,
   PlusCircle,
   ExternalLink,
-  ShieldCheck
+  ShieldCheck,
+  LogOut
 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { useToast } from '@/components/ui/toast';
 
 interface NavGroup {
   label: string;
@@ -79,6 +82,8 @@ export function AdminSidebar({
   onClose?: () => void;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const toast = useToast();
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
   const toggleGroup = (label: string) => {
@@ -86,6 +91,16 @@ export function AdminSidebar({
       ...prev,
       [label]: !prev[label],
     }));
+  };
+
+  const handleSignOut = async () => {
+    if (confirm('คุณต้องการออกจากระบบจัดการหลังบ้านใช่หรือไม่?')) {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      toast.success('ออกจากระบบเรียบร้อย', 'กลับสู่หน้าเข้าสู่ระบบ');
+      router.push('/login');
+      router.refresh();
+    }
   };
 
   return (
@@ -174,7 +189,7 @@ export function AdminSidebar({
           })}
         </div>
 
-        {/* Footer info & View public site link */}
+        {/* Footer info, View site & Logout */}
         <div className="p-4 border-t border-slate-800 space-y-2">
           <Link
             href="/"
@@ -184,7 +199,17 @@ export function AdminSidebar({
             <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
             <span>ดูหน้าเว็บไซต์จริง (Public Site)</span>
           </Link>
-          <p className="text-[10px] text-center text-slate-500">
+
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="w-full py-2 px-3 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-rose-900/60 cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>ออกจากระบบ (Logout)</span>
+          </button>
+
+          <p className="text-[10px] text-center text-slate-500 pt-1">
             ระบบจัดการเนื้อหาเวอร์ชัน 1.0 (Production)
           </p>
         </div>

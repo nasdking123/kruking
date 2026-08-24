@@ -13,7 +13,8 @@ import {
   LayoutDashboard,
   FileText,
   Gamepad2,
-  FolderOpen
+  FolderOpen,
+  Trophy
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/common/theme-toggle';
 
@@ -23,8 +24,9 @@ const defaultNavLinks = [
   { title: 'ใบงาน', href: '/worksheets', icon: FileText },
   { title: 'เกมการเรียนรู้', href: '/games', icon: Gamepad2 },
   { title: 'แผนการสอน', href: '/lesson-plans', icon: BookOpen },
-  { title: 'ห้องเรียนออนไลน์', href: '/classroom', icon: School, highlight: true },
-  { title: 'AI สำหรับครู', href: '/ai', icon: Sparkles, badge: 'AI' },
+  { title: 'ห้องเรียน', href: '/classroom', icon: School, highlight: true },
+  { title: 'เกียรติบัตร & ผลงาน', href: '/certificates', icon: Trophy },
+  { title: 'AI ครู', href: '/ai', icon: Sparkles, badge: 'AI' },
   { title: 'เกี่ยวกับครูคิง', href: '/about' },
 ];
 
@@ -101,57 +103,50 @@ export function PublicHeader() {
             <span>ระบบหลังบ้าน</span>
           </Link>
 
-          {/* Mobile menu trigger */}
+          {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="lg:hidden p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-            aria-label="เปิดเมนู"
+            aria-label="เปิดเมนูนำทาง"
           >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <MenuIcon className="w-5 h-5" />}
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <MenuIcon className="w-6 h-6" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Dropdown Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 pt-2 pb-6 space-y-2">
-          <div className="grid grid-cols-1 gap-1">
-            {defaultNavLinks.map((item) => {
-              const isActive = pathname === item.href;
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium ${
-                    isActive
-                      ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400'
-                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    {Icon && <Icon className="w-4 h-4 opacity-75" />}
-                    <span>{item.title}</span>
-                  </div>
-                  {item.badge && (
-                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-amber-500 text-white rounded">
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-            <div className="pt-3 mt-2 border-t border-slate-200 dark:border-slate-800">
-              <Link
-                href="/admin"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium shadow-xs"
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                <span>เข้าสู่ระบบจัดการ (Admin)</span>
-              </Link>
-            </div>
+        <div className="lg:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-4 space-y-1">
+          {defaultNavLinks.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-3 py-2.5 rounded-lg text-sm font-medium ${
+                pathname === item.href
+                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50'
+                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span>{item.title}</span>
+                {item.badge && (
+                  <span className="px-1.5 py-0.5 text-[10px] font-bold bg-amber-500 text-white rounded">
+                    {item.badge}
+                  </span>
+                )}
+              </div>
+            </Link>
+          ))}
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+            <Link
+              href="/admin"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-xs"
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              <span>เข้าสู่ระบบหลังบ้าน (Admin)</span>
+            </Link>
           </div>
         </div>
       )}
