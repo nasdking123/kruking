@@ -10,30 +10,18 @@ import {
   FileCode,
   Layers,
   FolderOpen,
-  FileText,
-  Gamepad2,
-  BookOpen,
-  GraduationCap,
-  Sparkles,
   Trophy,
-  Camera,
-  Newspaper,
-  Presentation,
   School,
   CheckSquare,
   BarChart3,
   Download,
-  Image as ImageIcon,
   Bot,
-  Sliders,
-  Activity,
-  Tags,
-  Users,
   Settings,
   ChevronDown,
   ChevronRight,
-  LogOut,
-  ExternalLink
+  PlusCircle,
+  ExternalLink,
+  ShieldCheck
 } from 'lucide-react';
 
 interface NavGroup {
@@ -42,66 +30,43 @@ interface NavGroup {
     title: string;
     href: string;
     icon: React.ElementType;
+    badge?: string;
   }[];
 }
 
 const adminNavGroups: NavGroup[] = [
   {
-    label: 'เว็บไซต์ & โครงสร้าง',
+    label: 'การจัดการเนื้อหา & สื่อ',
     items: [
-      { title: 'หน้าแรก (Homepage)', href: '/admin/homepage', icon: Globe },
-      { title: 'จัดการเมนู (Menus)', href: '/admin/menus', icon: MenuIcon },
-      { title: 'จัดการหน้า (Pages)', href: '/admin/pages', icon: FileCode },
+      { title: 'ภาพรวมระบบ (Overview)', href: '/admin', icon: LayoutDashboard },
+      { title: 'จัดการเนื้อหาทั้งหมด (Works)', href: '/admin/works', icon: Trophy },
+      { title: 'เพิ่มเนื้อหาใหม่ (Add Work)', href: '/admin/works/new', icon: PlusCircle, badge: 'ใหม่' },
+      { title: 'หมวดหมู่สื่อ (Categories)', href: '/admin/categories', icon: FolderOpen },
+    ],
+  },
+  {
+    label: 'เว็บไซต์ & โครงสร้าง CMS',
+    items: [
+      { title: 'หน้าแรก (Homepage Builder)', href: '/admin/homepage', icon: Globe },
+      { title: 'จัดการเมนู (Menu Builder)', href: '/admin/menus', icon: MenuIcon },
+      { title: 'จัดการหน้าเพจ (Pages CMS)', href: '/admin/pages', icon: FileCode },
       { title: 'โมดูลระบบ (Modules)', href: '/admin/modules', icon: Layers },
     ],
   },
   {
-    label: 'คลังเนื้อหา & สื่อ',
+    label: 'การเรียนรู้ & เครื่องมือ AI',
     items: [
-      { title: 'ผลงานครู (Works)', href: '/admin/works', icon: Trophy },
-      { title: 'สื่อการสอน (Resources)', href: '/admin/resources', icon: FolderOpen },
-      { title: 'ใบงาน (Worksheets)', href: '/admin/worksheets', icon: FileText },
-      { title: 'เกม (Games)', href: '/admin/games', icon: Gamepad2 },
-      { title: 'แผนการสอน (Lesson Plans)', href: '/admin/lesson-plans', icon: BookOpen },
-      { title: 'การจัดการเรียนรู้ (Showcase)', href: '/admin/teaching', icon: Presentation },
-      { title: 'งานวิจัย (Research)', href: '/admin/research', icon: GraduationCap },
-      { title: 'นวัตกรรม (Innovation)', href: '/admin/innovations', icon: Sparkles },
-      { title: 'รางวัล (Awards)', href: '/admin/awards', icon: Trophy },
-      { title: 'กิจกรรม (Activities)', href: '/admin/activities', icon: Camera },
-      { title: 'บทความ (Articles)', href: '/admin/articles', icon: Newspaper },
+      { title: 'ห้องเรียนออนไลน์ (Classroom)', href: '/classroom', icon: School },
+      { title: 'ระบบแบบทดสอบ (Quiz)', href: '/quiz', icon: CheckSquare },
+      { title: 'ศูนย์ดาวน์โหลด (Downloads)', href: '/downloads', icon: Download },
+      { title: 'ผู้ช่วย AI สำหรับครู (AI Tools)', href: '/ai', icon: Bot, badge: 'AI' },
     ],
   },
   {
-    label: 'การเรียนรู้ & ห้องเรียน',
+    label: 'สถิติ & การตั้งค่าระบบ',
     items: [
-      { title: 'ห้องเรียนออนไลน์ (Classroom)', href: '/admin/classrooms', icon: School },
-      { title: 'แบบทดสอบ (Quizzes)', href: '/admin/quizzes', icon: CheckSquare },
-      { title: 'ผลคะแนน (Scores)', href: '/admin/scores', icon: BarChart3 },
-    ],
-  },
-  {
-    label: 'ดาวน์โหลด & มีเดีย',
-    items: [
-      { title: 'ศูนย์ดาวน์โหลด', href: '/admin/downloads', icon: Download },
-      { title: 'Media Library', href: '/admin/media', icon: ImageIcon },
-    ],
-  },
-  {
-    label: 'AI สำหรับครู',
-    items: [
-      { title: 'AI Tools', href: '/admin/ai/tools', icon: Bot },
-      { title: 'AI Settings', href: '/admin/ai/settings', icon: Sliders },
-      { title: 'AI Usage Logs', href: '/admin/ai/logs', icon: Activity },
-    ],
-  },
-  {
-    label: 'ระบบ & ความปลอดภัย',
-    items: [
-      { title: 'หมวดหมู่ (Categories)', href: '/admin/categories', icon: FolderOpen },
-      { title: 'แท็ก (Tags)', href: '/admin/tags', icon: Tags },
-      { title: 'ผู้ใช้งาน (Users)', href: '/admin/users', icon: Users },
       { title: 'สถิติการใช้งาน (Analytics)', href: '/admin/analytics', icon: BarChart3 },
-      { title: 'ตั้งค่าระบบ (Settings)', href: '/admin/settings', icon: Settings },
+      { title: 'ตั้งค่าเว็บไซต์ (Settings)', href: '/admin/settings', icon: Settings },
     ],
   },
 ];
@@ -134,59 +99,37 @@ export function AdminSidebar({
       )}
 
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-72 bg-slate-900 text-slate-200 border-r border-slate-800 flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-50 w-72 bg-slate-950 text-slate-200 border-r border-slate-800 flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Sidebar Header */}
+        {/* Brand */}
         <div className="h-16 px-6 border-b border-slate-800 flex items-center justify-between">
           <Link href="/admin" className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold shadow-md shadow-blue-500/20">
-              <LayoutDashboard className="w-4 h-4" />
+            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 font-bold">
+              <ShieldCheck className="w-5 h-5" />
             </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-sm text-white">ห้องสื่อครูคิง</span>
-              <span className="text-[10px] text-blue-400 font-medium tracking-wider uppercase">
-                Admin Panel (CMS)
+            <div>
+              <span className="font-bold text-sm text-white block leading-tight">
+                ห้องสื่อครูคิง
+              </span>
+              <span className="text-[10px] text-blue-400 font-semibold tracking-wider uppercase">
+                Admin Control Panel
               </span>
             </div>
           </Link>
-          <Link
-            href="/"
-            target="_blank"
-            title="ดูเว็บไซต์หน้าบ้าน"
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-          >
-            <ExternalLink className="w-4 h-4" />
-          </Link>
         </div>
 
-        {/* Navigation Groups */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6 scrollbar-thin">
-          {/* Main Dashboard Link */}
-          <div>
-            <Link
-              href="/admin"
-              onClick={onClose}
-              className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
-                pathname === '/admin'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              <span>ภาพรวมระบบ (Dashboard)</span>
-            </Link>
-          </div>
-
+        {/* Navigation list */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
           {adminNavGroups.map((group) => {
             const isCollapsed = collapsedGroups[group.label];
             return (
-              <div key={group.label} className="space-y-1">
+              <div key={group.label} className="space-y-1.5">
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.label)}
-                  className="w-full flex items-center justify-between px-3 py-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider hover:text-slate-200 transition-colors"
+                  className="w-full flex items-center justify-between px-3 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider hover:text-slate-200"
                 >
                   <span>{group.label}</span>
                   {isCollapsed ? (
@@ -197,23 +140,30 @@ export function AdminSidebar({
                 </button>
 
                 {!isCollapsed && (
-                  <div className="space-y-0.5 pt-1">
+                  <div className="space-y-0.5">
                     {group.items.map((item) => {
-                      const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                      const isActive = pathname === item.href;
                       const Icon = item.icon;
                       return (
                         <Link
                           key={item.href}
                           href={item.href}
                           onClick={onClose}
-                          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                          className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
                             isActive
-                              ? 'bg-blue-600/90 text-white font-semibold'
-                              : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
+                              ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+                              : 'text-slate-400 hover:text-white hover:bg-slate-900'
                           }`}
                         >
-                          <Icon className="w-4 h-4 shrink-0" />
-                          <span className="truncate">{item.title}</span>
+                          <div className="flex items-center gap-2.5 truncate">
+                            <Icon className="w-4 h-4 shrink-0 opacity-80" />
+                            <span className="truncate">{item.title}</span>
+                          </div>
+                          {item.badge && (
+                            <span className="px-1.5 py-0.5 text-[9px] font-bold bg-blue-500/30 text-blue-300 rounded border border-blue-400/30">
+                              {item.badge}
+                            </span>
+                          )}
                         </Link>
                       );
                     })}
@@ -224,24 +174,19 @@ export function AdminSidebar({
           })}
         </div>
 
-        {/* Sidebar Footer User Info */}
-        <div className="p-4 border-t border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-400 font-bold text-xs">
-              KK
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-white truncate">ครูคิง (Super Admin)</p>
-              <p className="text-[10px] text-slate-400 truncate">kruking@school.ac.th</p>
-            </div>
-          </div>
+        {/* Footer info & View public site link */}
+        <div className="p-4 border-t border-slate-800 space-y-2">
           <Link
             href="/"
-            title="ออกจากระบบ"
-            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
+            target="_blank"
+            className="w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-slate-800"
           >
-            <LogOut className="w-4 h-4" />
+            <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
+            <span>ดูหน้าเว็บไซต์จริง (Public Site)</span>
           </Link>
+          <p className="text-[10px] text-center text-slate-500">
+            ระบบจัดการเนื้อหาเวอร์ชัน 1.0 (Production)
+          </p>
         </div>
       </aside>
     </>
