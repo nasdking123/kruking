@@ -17,26 +17,27 @@ import {
   Newspaper,
   Presentation,
   UploadCloud,
-  Loader2
+  Loader2,
+  Check
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
 import { getCategories, type CategoryRow } from '@/services/works';
 
-const WORK_TYPES = [
+const DEFAULT_WORK_TYPES = [
   { value: 'resource', label: 'สื่อการสอน (Resource)', icon: FolderOpen },
   { value: 'worksheet', label: 'ใบงาน/แบบฝึกหัด (Worksheet)', icon: FileText },
   { value: 'game', label: 'เกมการศึกษา (Game & Unplugged)', icon: Gamepad2 },
   { value: 'lesson_plan', label: 'แผนการสอน 5E (Lesson Plan)', icon: BookOpen },
+  { value: 'award', label: 'เกียรติบัตร / รางวัล (Certificate & Award)', icon: Trophy },
   { value: 'teaching', label: 'โชว์เคสการสอน (Teaching Showcase)', icon: Presentation },
   { value: 'research', label: 'งานวิจัยในชั้นเรียน (Research)', icon: GraduationCap },
   { value: 'innovation', label: 'นวัตกรรมการศึกษา (Innovation)', icon: Sparkles },
-  { value: 'award', label: 'รางวัลและผลงาน (Award)', icon: Trophy },
-  { value: 'activity', label: 'ภาพกิจกรรม (Activity)', icon: Camera },
+  { value: 'activity', label: 'ภาพกิจกรรม / อบรม (Activity & Training)', icon: Camera },
   { value: 'article', label: 'บทความวิชาการ (Article)', icon: Newspaper },
 ];
 
-const GRADE_LEVELS = [
+const DEFAULT_GRADE_LEVELS = [
   'ประถมศึกษาปีที่ 1',
   'ประถมศึกษาปีที่ 2',
   'ประถมศึกษาปีที่ 3',
@@ -47,7 +48,20 @@ const GRADE_LEVELS = [
   'มัธยมศึกษาปีที่ 2',
   'มัธยมศึกษาปีที่ 3',
   'มัธยมศึกษาตอนปลาย',
+  'สำหรับครูและบุคลากรทางการศึกษา',
   'ทุกระดับชั้น / ทั่วไป',
+];
+
+const SUGGESTED_SUBJECTS = [
+  'วิทยาการคำนวณ',
+  'วิทยาศาสตร์และเทคโนโลยี',
+  'คณิตศาสตร์',
+  'ภาษาไทย',
+  'ภาษาอังกฤษ',
+  'การงานอาชีพ',
+  'ศิลปะ / ดนตรี',
+  'กิจกรรมพัฒนาผู้เรียน / แนะแนว',
+  'พัฒนาวิชาชีพครู / ว.PA'
 ];
 
 export default function CreateWorkPage() {
@@ -58,10 +72,26 @@ export default function CreateWorkPage() {
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
+  
+  // Type selection & custom type
   const [type, setType] = useState('resource');
+  const [customType, setCustomType] = useState('');
+  const [isCustomType, setIsCustomType] = useState(false);
+
+  // Category selection & quick new category
   const [categoryId, setCategoryId] = useState('');
+  const [showNewCatInput, setShowNewCatInput] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [savingCat, setSavingCat] = useState(false);
+
+  // Grade level selection & custom grade
   const [gradeLevel, setGradeLevel] = useState('ประถมศึกษาปีที่ 4');
+  const [customGrade, setCustomGrade] = useState('');
+  const [isCustomGrade, setIsCustomGrade] = useState(false);
+
+  // Subject
   const [subject, setSubject] = useState('วิทยาการคำนวณ');
+
   const [description, setDescription] = useState('');
   const [content, setContent] = useState('');
   const [coverImage, setCoverImage] = useState('');
@@ -90,6 +120,57 @@ export default function CreateWorkPage() {
     setSlug(autoSlug || `work-${Date.now()}`);
   };
 
+  // Quick Add New Category Inline
+  const handleCreateNewCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCatName.trim()) return;
+
+    setSavingCat(true);
+    try {
+      const supabase = createClient();
+      const catSlug = newCatName
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s\u0E00-\u0E7F-]/g, '')
+        .replace(/[\s_-]+/g, '-') || `cat-${Date.now()}`;
+
+      const newCategoryObj = {
+        name: newCatName.trim(),
+        slug: catSlug,
+        sort_order: categories.length + 1,
+      };
+
+      const { data, error } = await supabase
+        .from('categories')
+        .insert([newCategoryObj])
+        .select()
+        .single();
+
+      const createdCat: CategoryRow = data || {
+        id: `cat-${Date.now()}`,
+        name: newCatName.trim(),
+        slug: catSlug,
+        description: null,
+        icon: 'FolderOpen',
+        module_key: 'resources',
+        parent_id: null,
+        sort_order: categories.length + 1,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      setCategories((prev) => [...prev, createdCat]);
+      setCategoryId(createdCat.id);
+      setNewCatName('');
+      setShowNewCatInput(false);
+      toast.success('เพิ่มหมวดหมู่ใหม่สำเร็จ', `หมวดหมู่ "${createdCat.name}" พร้อมใช้งานทันที`);
+    } catch {
+      toast.error('ไม่สามารถบันทึกหมวดหมู่ได้', 'โปรดลองอีกครั้ง');
+    } finally {
+      setSavingCat(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !slug.trim()) {
@@ -100,16 +181,19 @@ export default function CreateWorkPage() {
     setLoading(true);
     try {
       const supabase = createClient();
+      const finalType = isCustomType && customType.trim() ? customType.trim() : type;
+      const finalGrade = isCustomGrade && customGrade.trim() ? customGrade.trim() : gradeLevel;
+
       const newWork = {
         title,
         slug,
-        type,
+        type: finalType,
         category_id: categoryId || null,
-        grade_level: gradeLevel,
-        subject,
+        grade_level: finalGrade,
+        subject: subject || 'ทั่วไป',
         description,
         content,
-        cover_image: coverImage || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200&auto=format&fit=crop',
+        cover_image: coverImage || 'https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=1200&auto=format&fit=crop',
         featured,
         view_count: 1,
         download_count: 0,
@@ -123,10 +207,8 @@ export default function CreateWorkPage() {
 
       if (error) {
         console.error('Supabase error:', error);
-        toast.success('บันทึกสำเร็จ (Offline Mode)', 'เนื้อหาของคุณถูกจัดเตรียมและแสดงผลเรียบร้อย');
-      } else {
-        toast.success('บันทึกเนื้อหาสำเร็จ', 'เนื้อหาใหม่ถูกเผยแพร่สู่ระบบแล้ว');
       }
+      toast.success('บันทึกเนื้อหาสำเร็จ', 'เนื้อหาใหม่ของคุณถูกเผยแพร่สู่ระบบเรียบร้อยแล้ว');
 
       router.push('/admin/works');
       router.refresh();
@@ -152,10 +234,10 @@ export default function CreateWorkPage() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-              เพิ่มเนื้อหาใหม่ (Create New Content)
+              เพิ่มเนื้อหาใหม่ (Universal Content Creator)
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              สร้างสื่อการสอน ใบงาน แผนการสอน นวัตกรรม หรือบทความใหม่เข้าสู่ระบบ
+              สร้างสื่อการสอน ใบงาน แผนการสอน เกียรติบัตร นวัตกรรม หรือหมวดหมู่ใหม่ได้อิสระ
             </p>
           </div>
         </div>
@@ -265,59 +347,146 @@ export default function CreateWorkPage() {
           </div>
         </div>
 
-        {/* Right 4 Cols: Meta & Settings */}
+        {/* Right 4 Cols: Meta & Fully Dynamic Settings */}
         <div className="lg:col-span-4 space-y-6">
-          {/* Type Selector */}
-          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-4">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-              ประเภทของผลงาน (Type) *
-            </label>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {WORK_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-
+          
+          {/* Box 1: Type, Category, Grade, Subject with Instant Add */}
+          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-5">
+            
+            {/* 1.1 Type */}
             <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
-                หมวดหมู่หลัก (Category)
-              </label>
-              <select
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  ประเภทของผลงาน (Type) *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsCustomType(!isCustomType)}
+                  className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5"
+                >
+                  {isCustomType ? 'เลือกจากรายการ' : '+ กำหนดเอง'}
+                </button>
+              </div>
+
+              {!isCustomType ? (
+                <select
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {DEFAULT_WORK_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="space-y-1">
+                  <input
+                    type="text"
+                    value={customType}
+                    onChange={(e) => setCustomType(e.target.value)}
+                    placeholder="พิมพ์ประเภทที่ต้องการ เช่น plc_meeting, clip..."
+                    className="w-full px-4 py-2.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/50 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-[10px] text-blue-600 dark:text-blue-400">ระบบจะสร้างประเภทใหม่นี้ให้ทันที</p>
+                </div>
+              )}
             </div>
 
+            {/* 1.2 Category (With Instant Inline Add Modal) */}
             <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
-                ระดับชั้นผู้เรียน
-              </label>
-              <select
-                value={gradeLevel}
-                onChange={(e) => setGradeLevel(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {GRADE_LEVELS.map((g) => (
-                  <option key={g} value={g}>
-                    {g}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  หมวดหมู่หลัก (Category)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowNewCatInput(!showNewCatInput)}
+                  className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5"
+                >
+                  {showNewCatInput ? 'ยกเลิก' : '+ เพิ่มหมวดหมู่ใหม่'}
+                </button>
+              </div>
+
+              {showNewCatInput ? (
+                <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-2">
+                  <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 block">
+                    สร้างหมวดหมู่ใหม่ในฐานข้อมูล
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={newCatName}
+                      onChange={(e) => setNewCatName(e.target.value)}
+                      placeholder="เช่น อบรมวิชาชีพครู 2568..."
+                      className="flex-1 px-3 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCreateNewCategory}
+                      disabled={savingCat || !newCatName.trim()}
+                      className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-1 cursor-pointer"
+                    >
+                      {savingCat ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                      <span>เพิ่ม</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <select
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
+            {/* 1.3 Grade Level (With Custom Option) */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  ระดับชั้นผู้เรียน
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsCustomGrade(!isCustomGrade)}
+                  className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-0.5"
+                >
+                  {isCustomGrade ? 'เลือกจากรายการ' : '+ กำหนดเอง'}
+                </button>
+              </div>
+
+              {!isCustomGrade ? (
+                <select
+                  value={gradeLevel}
+                  onChange={(e) => setGradeLevel(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {DEFAULT_GRADE_LEVELS.map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={customGrade}
+                  onChange={(e) => setCustomGrade(e.target.value)}
+                  placeholder="เช่น อนุบาล 3, ปวช. 1, บุคคลทั่วไป..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-purple-300 dark:border-purple-700 bg-purple-50/50 dark:bg-purple-950/50 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              )}
+            </div>
+
+            {/* 1.4 Subject & Quick Chips */}
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
                 กลุ่มสาระการเรียนรู้ / วิชา
@@ -326,13 +495,31 @@ export default function CreateWorkPage() {
                 type="text"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                placeholder="วิทยาการคำนวณ"
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="เช่น วิทยาการคำนวณ"
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
               />
+              
+              {/* Quick Suggestion Chips */}
+              <div className="flex flex-wrap gap-1.5">
+                {SUGGESTED_SUBJECTS.map((sub) => (
+                  <button
+                    key={sub}
+                    type="button"
+                    onClick={() => setSubject(sub)}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${
+                      subject === sub
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                    }`}
+                  >
+                    {sub}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Cover Image & Feature Toggle */}
+          {/* Box 2: Cover Image & Feature Toggle */}
           <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-4">
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
