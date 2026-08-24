@@ -10,7 +10,8 @@ import {
   Search, 
   Bot, 
   CheckCircle2, 
-  BookOpen 
+  BookOpen,
+  Plus
 } from 'lucide-react';
 import { getWorks, getCategories } from '@/services/works';
 import { getHomepageSections } from '@/services/homepage';
@@ -185,7 +186,7 @@ export default async function HomePage() {
       )}
 
       {/* 3. CATEGORIES SECTION */}
-      {enabledKeys.has('categories') && (
+      {enabledKeys.has('categories') && categories.length > 0 && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-xl mx-auto mb-8">
             <h2 className="text-2xl font-bold text-slate-900">
@@ -236,11 +237,30 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredWorks.map((work) => (
-              <WorkCard key={work.id} work={work} />
-            ))}
-          </div>
+          {featuredWorks.length === 0 ? (
+            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/80 text-center space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 mx-auto flex items-center justify-center">
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-800">ยังไม่มีผลงานเด่นในระบบ</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                คุณครูสามารถเพิ่มผลงานและปักหมุดผลงานเด่นได้จากระบบจัดการหลังบ้าน
+              </p>
+              <Link
+                href="/admin/works/new"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>เพิ่มผลงานเด่น</span>
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredWorks.map((work) => (
+                <WorkCard key={work.id} work={work} />
+              ))}
+            </div>
+          )}
         </section>
       )}
 
@@ -265,11 +285,30 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {worksheets.map((work) => (
-              <WorkCard key={work.id} work={work} />
-            ))}
-          </div>
+          {worksheets.length === 0 ? (
+            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/80 text-center space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center">
+                <FileText className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-800">ยังไม่มีใบงานในระบบ</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                คุณครูสามารถอัปโหลดใบงานและแบบฝึกหัดพร้อมเฉลยได้จากระบบจัดการหลังบ้าน
+              </p>
+              <Link
+                href="/admin/works/new"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>เพิ่มใบงานใหม่</span>
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {worksheets.map((work) => (
+                <WorkCard key={work.id} work={work} />
+              ))}
+            </div>
+          )}
         </section>
       )}
 
@@ -294,11 +333,30 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            {games.map((work) => (
-              <WorkCard key={work.id} work={work} />
-            ))}
-          </div>
+          {games.length === 0 ? (
+            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/80 text-center space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-600 mx-auto flex items-center justify-center">
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-800">ยังไม่มีเกมการเรียนรู้ในระบบ</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                คุณครูสามารถเพิ่มบอร์ดเกมหรือกิจกรรม Unplugged Coding ได้จากระบบหลังบ้าน
+              </p>
+              <Link
+                href="/admin/works/new"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>เพิ่มเกมใหม่</span>
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              {games.map((work) => (
+                <WorkCard key={work.id} work={work} />
+              ))}
+            </div>
+          )}
         </section>
       )}
 
