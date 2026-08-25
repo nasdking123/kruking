@@ -67,7 +67,8 @@ interface SocialLinksMetadata {
  * Register new student account
  */
 export async function registerStudent(payload: {
-  email: string;
+  username?: string;
+  email?: string;
   password: string;
   fullName: string;
   gradeLevel: string;

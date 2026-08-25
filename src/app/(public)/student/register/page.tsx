@@ -7,12 +7,12 @@ import {
   UserPlus, 
   GraduationCap, 
   User, 
-  Mail, 
   Lock, 
   School, 
   Hash, 
   ArrowRight,
-  Loader2
+  Loader2,
+  KeyRound
 } from 'lucide-react';
 import { registerStudent } from '@/services/student';
 import { createClient } from '@/lib/supabase/client';
@@ -28,20 +28,20 @@ export default function StudentRegisterPage() {
   const [classroomName, setClassroomName] = useState('ห้อง 1');
   const [studentNumber, setStudentNumber] = useState('');
   const [school, setSchool] = useState('โรงเรียนวัดเทพลีลา');
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName || !email || !password) {
-      toast.error('กรุณากรอกข้อมูล', 'โปรดกรอกชื่อ-นามสกุล อีเมล และรหัสผ่าน');
+    if (!fullName || !username || !password) {
+      toast.error('กรุณากรอกข้อมูล', 'โปรดกรอกชื่อ-นามสกุล ชื่อผู้ใช้ และรหัสผ่าน');
       return;
     }
 
     setLoading(true);
     const res = await registerStudent({
       fullName,
-      email,
+      username: username.trim().toLowerCase(),
       password,
       gradeLevel,
       studentNumber,
@@ -55,17 +55,21 @@ export default function StudentRegisterPage() {
       return;
     }
 
-    // Auto sign-in
+    // Auto sign-in with formatted username
+    const formattedEmail = username.includes('@') 
+      ? username.trim().toLowerCase() 
+      : `${username.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '')}@student.kruking.ac.th`;
+
     const supabase = createClient();
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
+      email: formattedEmail,
       password,
     });
 
     setLoading(false);
 
     if (signInError) {
-      toast.success('สมัครสมาชิกสำเร็จ', 'กรุณาเข้าสู่ระบบด้วยอีเมลและรหัสผ่าน');
+      toast.success('สมัครสมาชิกสำเร็จ', 'กรุณาเข้าสู่ระบบด้วยชื่อผู้ใช้และรหัสผ่าน');
       router.push('/student/login');
     } else {
       toast.success('ยินดีต้อนรับ!', `ยินดีต้อนรับ ${fullName} เข้าสู่ระบบนักเรียน`);
@@ -78,7 +82,7 @@ export default function StudentRegisterPage() {
       <div className="w-full max-w-lg space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-xs font-bold">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-xs font-bold shadow-xs">
             <GraduationCap className="w-4 h-4" />
             <span>Student Registration Portal</span>
           </div>
@@ -86,7 +90,7 @@ export default function StudentRegisterPage() {
             สมัครสมาชิกนักเรียนเข้าใช้งาน
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">
-            ลงทะเบียนเพื่อเข้าเรียนออนไลน์ ทำแบบทดสอบ และสะสมคะแนนผลการเรียน
+            ลงทะเบียนง่ายๆ ไม่ต้องใช้อีเมล เพื่อเข้าเรียนออนไลน์และทำแบบทดสอบ
           </p>
         </div>
 
@@ -172,20 +176,23 @@ export default function StudentRegisterPage() {
             />
           </div>
 
-          {/* Email / Username */}
+          {/* Username (NO EMAIL REQUIRED) */}
           <div>
             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5 flex items-center gap-1">
-              <Mail className="w-3.5 h-3.5 text-blue-600" />
-              <span>อีเมล หรือ ชื่อผู้ใช้สำหรับล็อกอิน *</span>
+              <KeyRound className="w-3.5 h-3.5 text-emerald-600" />
+              <span>ชื่อผู้ใช้สำหรับล็อกอิน (Username / รหัสนักเรียน) *</span>
             </label>
             <input
-              type="email"
+              type="text"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="เช่น student01@school.ac.th หรือ student@gmail.com"
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
+              value={username}
+              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+              placeholder="เช่น student01, king601 หรือ เลขประจำตัวนักเรียน"
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-mono text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
             />
+            <p className="text-[10px] text-slate-400 mt-1">
+              * ใช้ภาษาอังกฤษหรือตัวเลข สำหรับใช้ล็อกอินเข้าสู่ระบบในครั้งถัดไป
+            </p>
           </div>
 
           {/* Password */}
@@ -209,7 +216,7 @@ export default function StudentRegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             {loading ? (
               <>
@@ -226,10 +233,10 @@ export default function StudentRegisterPage() {
           </button>
 
           <div className="pt-2 text-center border-t border-slate-100 dark:border-slate-800">
-            <span className="text-xs text-slate-500">มีบัญชีนักเรียนอยู่แล้ว? </span>
+            <span className="text-xs text-slate-500">มีชื่อผู้ใช้นักเรียนอยู่แล้ว? </span>
             <Link
               href="/student/login"
-              className="text-xs font-bold text-blue-600 hover:underline"
+              className="text-xs font-bold text-emerald-600 hover:underline"
             >
               เข้าสู่ระบบที่นี่
             </Link>

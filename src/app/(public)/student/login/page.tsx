@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { 
   LogIn, 
   GraduationCap, 
-  Mail, 
+  KeyRound, 
   Lock, 
   ArrowRight,
   Loader2
@@ -19,27 +19,33 @@ export default function StudentLoginPage() {
   const toast = useToast();
   const [loading, setLoading] = useState(false);
 
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      toast.error('กรุณากรอกข้อมูล', 'โปรดกรอกอีเมลและรหัสผ่าน');
+    if (!username || !password) {
+      toast.error('กรุณากรอกข้อมูล', 'โปรดกรอกชื่อผู้ใช้และรหัสผ่าน');
       return;
     }
 
     setLoading(true);
+
+    const cleanUsername = username.trim().toLowerCase();
+    const formattedEmail = cleanUsername.includes('@')
+      ? cleanUsername
+      : `${cleanUsername.replace(/[^a-z0-9_.-]/g, '')}@student.kruking.ac.th`;
+
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
+      email: formattedEmail,
       password,
     });
 
     setLoading(false);
 
     if (error) {
-      toast.error('เข้าสู่ระบบไม่สำเร็จ', 'อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+      toast.error('เข้าสู่ระบบไม่สำเร็จ', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
       return;
     }
 
@@ -52,7 +58,7 @@ export default function StudentLoginPage() {
       <div className="w-full max-w-md space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-xs font-bold">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-xs font-bold shadow-xs">
             <GraduationCap className="w-4 h-4" />
             <span>Student Portal Login</span>
           </div>
@@ -68,16 +74,16 @@ export default function StudentLoginPage() {
         <form onSubmit={handleLogin} className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xl space-y-5">
           <div>
             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5 flex items-center gap-1">
-              <Mail className="w-3.5 h-3.5 text-blue-600" />
-              <span>อีเมล หรือ ชื่อผู้ใช้ *</span>
+              <KeyRound className="w-3.5 h-3.5 text-emerald-600" />
+              <span>ชื่อผู้ใช้ / รหัสนักเรียน (Username) *</span>
             </label>
             <input
-              type="email"
+              type="text"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="student@school.ac.th"
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-mono text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="เช่น student01, king601"
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-mono text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
             />
           </div>
 
@@ -99,7 +105,7 @@ export default function StudentLoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             {loading ? (
               <>
@@ -117,10 +123,10 @@ export default function StudentLoginPage() {
 
           <div className="pt-3 text-center border-t border-slate-100 dark:border-slate-800 space-y-2">
             <div>
-              <span className="text-xs text-slate-500">ยังไม่มีบัญชีนักเรียน? </span>
+              <span className="text-xs text-slate-500">ยังไม่มีชื่อผู้ใช้นักเรียน? </span>
               <Link
                 href="/student/register"
-                className="text-xs font-bold text-blue-600 hover:underline"
+                className="text-xs font-bold text-emerald-600 hover:underline"
               >
                 สมัครสมาชิกที่นี่
               </Link>
