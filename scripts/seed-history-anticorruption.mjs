@@ -294,7 +294,7 @@ async function seedHistoryAndAntiCorruption() {
   ];
 
   for (const work of works) {
-    const { data, error } = await adminClient
+    const { error } = await adminClient
       .from('works')
       .upsert([work], { onConflict: 'slug' })
       .select()

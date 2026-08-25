@@ -146,6 +146,10 @@ export default function CreateWorkPage() {
         .select()
         .single();
 
+      if (error) {
+        console.error('Category insert error:', error);
+      }
+
       const createdCat: CategoryRow = data || {
         id: `cat-${Date.now()}`,
         name: newCatName.trim(),
