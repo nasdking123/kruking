@@ -21,6 +21,9 @@ import { getHomepageSections } from '@/services/homepage';
 import { getSettings } from '@/services/settings';
 import { WorkCard } from '@/components/public/work-card';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function HomePage() {
   const settings = await getSettings();
   const sections = await getHomepageSections();

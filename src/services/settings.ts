@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
 import type { SiteSettings } from '@/types';
-import type { Json } from '@/types/database';
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   site_name: 'ห้องสื่อครูคิง',
@@ -46,43 +45,37 @@ export async function getSettings(): Promise<SiteSettings> {
 
 export async function saveSettings(settings: Partial<SiteSettings>): Promise<{ success: boolean; error?: string }> {
   try {
+    // Attempt save via server API route
+    if (typeof window !== 'undefined') {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        return { success: true };
+      }
+      if (json.error) {
+        console.warn('API route failed, trying fallback client update:', json.error);
+      }
+    }
+
+    // Direct Supabase fallback
     const supabase = createClient();
     const current = await getSettings();
     const updated = { ...current, ...settings };
 
-    // Check if row exists
-    const { data: existing } = await supabase
+    const { error } = await supabase
       .from('site_settings')
-      .select('id')
-      .eq('key', 'general')
-      .maybeSingle();
+      .update({
+        value: updated,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('key', 'general');
 
-    if (existing) {
-      const { error } = await supabase
-        .from('site_settings')
-        .update({ 
-          value: updated as unknown as Json, 
-          updated_at: new Date().toISOString() 
-        })
-        .eq('key', 'general');
-
-      if (error) {
-        console.error('Update settings error:', error);
-        return { success: false, error: error.message };
-      }
-    } else {
-      const { error } = await supabase
-        .from('site_settings')
-        .insert([{
-          key: 'general',
-          value: updated as unknown as Json,
-          updated_at: new Date().toISOString()
-        }]);
-
-      if (error) {
-        console.error('Insert settings error:', error);
-        return { success: false, error: error.message };
-      }
+    if (error) {
+      return { success: false, error: error.message };
     }
 
     return { success: true };
