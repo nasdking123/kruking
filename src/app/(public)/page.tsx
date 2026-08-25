@@ -115,6 +115,7 @@ export default async function HomePage() {
                       alt="หน้าปกห้องสื่อครูคิง"
                       fill
                       priority
+                      unoptimized
                       className="object-cover group-hover:scale-105 transition-transform duration-700"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/25 to-transparent" />
@@ -174,6 +175,7 @@ export default async function HomePage() {
                   src={settings.teacher_avatar_url || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=600&auto=format&fit=crop"}
                   alt={settings.teacher_name || "ครูคิง"}
                   fill
+                  unoptimized
                   className="object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-lg bg-emerald-500 text-white text-[10px] font-bold shadow-md flex items-center gap-1">

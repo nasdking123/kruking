@@ -37,11 +37,11 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'images.unsplash.com',
+        hostname: '**',
       },
       {
-        protocol: 'https',
-        hostname: 'api.qrserver.com',
+        protocol: 'http',
+        hostname: '**',
       },
     ],
   },

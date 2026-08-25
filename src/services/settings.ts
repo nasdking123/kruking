@@ -8,9 +8,9 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   logo_url: '/images/logo.png',
   favicon_url: '/favicon.ico',
   primary_color: '#2563eb',
-  contact_email: 'kruking.teaching@gmail.com',
-  contact_phone: '081-234-5678',
-  school_name: 'โรงเรียนตัวอย่างวิทยา',
+  contact_email: 'kruking.admin@school.ac.th',
+  contact_phone: '0643531267',
+  school_name: 'โรงเรียนวัดบางโฉลงใน',
   teacher_name: 'ครูคิง (Kru King)',
   teacher_title: 'ครูผู้สอนกลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี • สังคมศึกษา',
   teacher_bio: 'มุ่งมั่นพัฒนาสื่อนวัตกรรมการจัดการเรียนรู้แบบ Active Learning 5E และการคิดเชิงคำนวณ เพื่อให้ผู้เรียนทุกคนสนุกและเกิดทักษะในชีวิตจริง',
@@ -33,7 +33,7 @@ export async function getSettings(): Promise<SiteSettings> {
       .from('site_settings')
       .select('value')
       .eq('key', 'general')
-      .single();
+      .maybeSingle();
 
     if (error || !data || !data.value) {
       return DEFAULT_SITE_SETTINGS;
@@ -44,18 +44,50 @@ export async function getSettings(): Promise<SiteSettings> {
   }
 }
 
-export async function saveSettings(settings: Partial<SiteSettings>): Promise<boolean> {
+export async function saveSettings(settings: Partial<SiteSettings>): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = createClient();
     const current = await getSettings();
     const updated = { ...current, ...settings };
 
-    await supabase
+    // Check if row exists
+    const { data: existing } = await supabase
       .from('site_settings')
-      .upsert({ key: 'general', value: updated as unknown as Json, updated_at: new Date().toISOString() });
+      .select('id')
+      .eq('key', 'general')
+      .maybeSingle();
 
-    return true;
-  } catch {
-    return true;
+    if (existing) {
+      const { error } = await supabase
+        .from('site_settings')
+        .update({ 
+          value: updated as unknown as Json, 
+          updated_at: new Date().toISOString() 
+        })
+        .eq('key', 'general');
+
+      if (error) {
+        console.error('Update settings error:', error);
+        return { success: false, error: error.message };
+      }
+    } else {
+      const { error } = await supabase
+        .from('site_settings')
+        .insert([{
+          key: 'general',
+          value: updated as unknown as Json,
+          updated_at: new Date().toISOString()
+        }]);
+
+      if (error) {
+        console.error('Insert settings error:', error);
+        return { success: false, error: error.message };
+      }
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error('Save settings exception:', err);
+    return { success: false, error: String(err) };
   }
 }
