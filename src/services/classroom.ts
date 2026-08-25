@@ -62,13 +62,27 @@ export async function getClassrooms(): Promise<ClassroomWithLessons[]> {
 export async function getClassroomBySlug(slug: string): Promise<ClassroomWithLessons | null> {
   try {
     const supabase = createClient();
-    const { data: cls, error } = await supabase
-      .from('classrooms')
-      .select('*')
-      .eq('slug', slug)
-      .maybeSingle();
+    let decodedSlug = slug;
+    try {
+      decodedSlug = decodeURIComponent(slug);
+    } catch {
+      decodedSlug = slug;
+    }
 
-    if (error || !cls) {
+    // Try finding classroom matching either decodedSlug or raw slug or id
+    const { data: allClassrooms, error } = await supabase
+      .from('classrooms')
+      .select('*');
+
+    if (error || !allClassrooms) {
+      return null;
+    }
+
+    const cls = allClassrooms.find(
+      (c) => c.slug === decodedSlug || c.slug === slug || c.id === slug || c.slug?.toLowerCase() === decodedSlug.toLowerCase()
+    );
+
+    if (!cls) {
       return null;
     }
 

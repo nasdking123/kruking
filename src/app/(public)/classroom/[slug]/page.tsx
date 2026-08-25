@@ -9,9 +9,7 @@ import {
   PlayCircle, 
   KeyRound,
   User,
-  ArrowRight,
-  Sparkles,
-  School
+  ArrowRight
 } from 'lucide-react';
 import { getClassroomBySlug } from '@/services/classroom';
 import { getYouTubeThumbnail } from '@/lib/youtube';
