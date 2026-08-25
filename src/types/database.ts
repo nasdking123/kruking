@@ -597,18 +597,14 @@ export interface Database {
         };
         Relationships: [];
       };
-      lessons: {
+      courses: {
         Row: {
           id: string;
           classroom_id: string;
           title: string;
           description: string | null;
-          content: string | null;
-          video_url: string | null;
-          duration_minutes: number;
           sort_order: number;
-          is_published: boolean;
-          resources: Json;
+          published: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -617,12 +613,8 @@ export interface Database {
           classroom_id: string;
           title: string;
           description?: string | null;
-          content?: string | null;
-          video_url?: string | null;
-          duration_minutes?: number;
           sort_order?: number;
-          is_published?: boolean;
-          resources?: Json;
+          published?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -631,12 +623,47 @@ export interface Database {
           classroom_id?: string;
           title?: string;
           description?: string | null;
+          sort_order?: number;
+          published?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      lessons: {
+        Row: {
+          id: string;
+          course_id: string;
+          title: string;
+          description: string | null;
+          content: string | null;
+          video_url: string | null;
+          sort_order: number;
+          published: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          course_id: string;
+          title: string;
+          description?: string | null;
           content?: string | null;
           video_url?: string | null;
-          duration_minutes?: number;
           sort_order?: number;
-          is_published?: boolean;
-          resources?: Json;
+          published?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          course_id?: string;
+          title?: string;
+          description?: string | null;
+          content?: string | null;
+          video_url?: string | null;
+          sort_order?: number;
+          published?: boolean;
           created_at?: string;
           updated_at?: string;
         };

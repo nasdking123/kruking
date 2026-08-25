@@ -13,7 +13,7 @@ import {
   KeyRound,
   Loader2
 } from 'lucide-react';
-import { getClassrooms, type ClassroomWithLessons } from '@/services/classroom';
+import { getClassrooms, createLessonForClassroom, type ClassroomWithLessons } from '@/services/classroom';
 import { YouTubePlayer } from '@/components/common/youtube-player';
 import { getYouTubeThumbnail } from '@/lib/youtube';
 import { createClient } from '@/lib/supabase/client';
@@ -114,25 +114,18 @@ export default function AdminClassroomManagerPage() {
     if (!selectedClassroom || !lessonTitle.trim()) return;
 
     setSavingLesson(true);
-    const supabase = createClient();
-
-    const { error } = await supabase
-      .from('lessons')
-      .insert([{
-        classroom_id: selectedClassroom.id,
-        title: lessonTitle.trim(),
-        description: lessonDesc.trim() || null,
-        video_url: lessonVideoUrl.trim() || null,
-        content: lessonContent.trim() || null,
-        sort_order: (selectedClassroom.lessons?.length || 0) + 1,
-        duration_minutes: 15,
-        is_published: true,
-      }]);
+    const result = await createLessonForClassroom({
+      classroomId: selectedClassroom.id,
+      title: lessonTitle.trim(),
+      description: lessonDesc.trim() || undefined,
+      videoUrl: lessonVideoUrl.trim() || undefined,
+      content: lessonContent.trim() || undefined,
+    });
 
     setSavingLesson(false);
 
-    if (error) {
-      toast.error('ไม่สามารถเพิ่มบทเรียนได้', error.message);
+    if (!result.success) {
+      toast.error('ไม่สามารถเพิ่มบทเรียนได้', result.error || 'เกิดข้อผิดพลาดในการบันทึกบทเรียน');
       return;
     }
 
