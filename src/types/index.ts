@@ -22,6 +22,11 @@ export interface SiteSettings {
   contact_email: string;
   contact_phone: string;
   school_name: string;
+  teacher_name?: string;
+  teacher_title?: string;
+  teacher_bio?: string;
+  teacher_avatar_url?: string;
+  banner_cover_url?: string;
   social_links: {
     facebook?: string;
     youtube?: string;
@@ -58,14 +63,5 @@ export interface ModuleDefinition {
   version: string;
   enabled: boolean;
   sort_order: number;
-  config: Record<string, unknown>;
-}
-
-export interface AIProviderInterface {
-  generateText(prompt: string, systemPrompt?: string): Promise<string>;
-  generateLessonPlan(input: { grade: string; subject: string; topic: string; duration: string; objectives: string; style?: string }): Promise<string>;
-  generateWorksheet(input: { grade: string; subject: string; topic: string; questionsCount: number; difficulty: string }): Promise<string>;
-  generateQuiz(input: { grade: string; subject: string; topic: string; questionsCount: number; optionsCount: number }): Promise<string>;
-  summarize(text: string): Promise<string>;
-  generateActivity(input: { topic: string; grade: string; duration: string }): Promise<string>;
+  config?: Record<string, unknown>;
 }

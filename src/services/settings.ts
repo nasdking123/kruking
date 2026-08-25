@@ -4,13 +4,18 @@ import type { Json } from '@/types/database';
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   site_name: 'ห้องสื่อครูคิง',
-  tagline: 'แหล่งรวมสื่อการเรียนรู้ ผลงาน นวัตกรรม และประสบการณ์การสอน',
+  tagline: 'แหล่งรวมสื่อการเรียนรู้ นวัตกรรม และประสบการณ์การสอนครูคิง',
   logo_url: '/images/logo.png',
   favicon_url: '/favicon.ico',
   primary_color: '#2563eb',
   contact_email: 'kruking.teaching@gmail.com',
   contact_phone: '081-234-5678',
   school_name: 'โรงเรียนตัวอย่างวิทยา',
+  teacher_name: 'ครูคิง (Kru King)',
+  teacher_title: 'ครูผู้สอนกลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี • สังคมศึกษา',
+  teacher_bio: 'มุ่งมั่นพัฒนาสื่อนวัตกรรมการจัดการเรียนรู้แบบ Active Learning 5E และการคิดเชิงคำนวณ เพื่อให้ผู้เรียนทุกคนสนุกและเกิดทักษะในชีวิตจริง',
+  teacher_avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=600&auto=format&fit=crop',
+  banner_cover_url: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=1200&auto=format&fit=crop',
   social_links: {
     facebook: 'https://facebook.com/kruking',
     youtube: 'https://youtube.com/@kruking',
