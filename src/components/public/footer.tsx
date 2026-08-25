@@ -1,6 +1,5 @@
-import React from 'react';
 import Link from 'next/link';
-import { BookOpen, Heart, Mail, Phone, ExternalLink } from 'lucide-react';
+import { BookOpen, Mail, Phone, ExternalLink } from 'lucide-react';
 
 export function PublicFooter() {
   return (
@@ -73,11 +72,9 @@ export function PublicFooter() {
           </div>
         </div>
 
-        <div className="pt-8 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+        <div className="pt-8 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p>© 2026 ห้องสื่อครูคิง. ออกแบบและพัฒนาเพื่อส่งเสริมการศึกษาไทย</p>
-          <div className="flex items-center gap-1 text-slate-500">
-            <span>สร้างด้วย</span>
-            <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 inline" />
+          <div className="flex items-center gap-1.5">
             <span className="font-semibold text-slate-700 dark:text-slate-300">ครูจักรพงษ์ สำรองพันธ์ โรงเรียนวัดบางโฉลงใน</span>
           </div>
         </div>
