@@ -35,11 +35,14 @@ export async function getQuizzes(): Promise<QuizWithQuestions[]> {
 export async function getQuizById(idOrSlug: string): Promise<QuizWithQuestions | null> {
   try {
     const supabase = createClient();
-    const { data, error } = await supabase
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+    const query = supabase
       .from('quizzes')
-      .select('*, questions:quiz_questions(*, choices:quiz_choices(*))')
-      .eq('id', idOrSlug)
-      .maybeSingle();
+      .select('*, questions:quiz_questions(*, choices:quiz_choices(*))');
+
+    const { data, error } = isUuid 
+      ? await query.eq('id', idOrSlug).maybeSingle()
+      : await query.eq('slug', idOrSlug).maybeSingle();
 
     if (error || !data) {
       return null;
