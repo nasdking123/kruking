@@ -72,7 +72,7 @@ async function runSystemAudit() {
   for (const table of tables) {
     totalTests++;
     try {
-      const { data, count, error } = await adminClient.from(table).select('*', { count: 'exact', head: false }).limit(5);
+      const { data, error } = await adminClient.from(table).select('*').limit(5);
       if (error) {
         console.log(`  ❌ Table "${table}": Error -> ${error.message}`);
       } else {
