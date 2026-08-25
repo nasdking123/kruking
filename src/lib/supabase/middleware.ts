@@ -31,12 +31,20 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Admin route protection: redirect to login if not authenticated
+  // Admin route protection: redirect to login if not authenticated or if student
   if (request.nextUrl.pathname.startsWith('/admin') && !request.nextUrl.pathname.startsWith('/admin/login')) {
     if (!user) {
       const url = request.nextUrl.clone();
       url.pathname = '/login';
       url.searchParams.set('redirectTo', request.nextUrl.pathname);
+      return NextResponse.redirect(url);
+    }
+
+    // Role Guard: Disallow student role from accessing admin routes
+    const role = user.user_metadata?.role;
+    if (role === 'student') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/student/dashboard';
       return NextResponse.redirect(url);
     }
   }

@@ -18,6 +18,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/research',
     '/innovation',
     '/awards',
+    '/certificates',
+    '/about',
     '/activities',
     '/articles',
     '/classroom',
@@ -25,7 +27,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/downloads',
     '/ai',
     '/search',
-    '/p/about',
+    '/student/login',
+    '/student/register',
   ].map((route) => ({
     url: `${baseUrl}${route}`,
     lastModified: new Date(),

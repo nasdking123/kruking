@@ -178,7 +178,9 @@ export default function AdminStudentsAnalyticsPage() {
                         </div>
                         <div>
                           <div>{std.full_name}</div>
-                          <div className="text-[10px] text-slate-400 font-mono font-normal">{std.email}</div>
+                          <div className="text-[10px] text-slate-400 font-mono font-normal">
+                            @{std.email.replace('@student.kruking.ac.th', '')}
+                          </div>
                         </div>
                       </div>
                     </td>

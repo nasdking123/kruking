@@ -10,7 +10,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   contact_email: 'kruking.admin@school.ac.th',
   contact_phone: '0643531267',
   school_name: 'โรงเรียนวัดบางโฉลงใน',
-  teacher_name: 'ครูคิง (Kru King)',
+  teacher_name: 'ครูจักรพงษ์ สำรองพันธ์ (ครูคิง)',
   teacher_title: 'ครูผู้สอนกลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี • สังคมศึกษา',
   teacher_bio: 'มุ่งมั่นพัฒนาสื่อนวัตกรรมการจัดการเรียนรู้แบบ Active Learning 5E และการคิดเชิงคำนวณ เพื่อให้ผู้เรียนทุกคนสนุกและเกิดทักษะในชีวิตจริง',
   teacher_avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=600&auto=format&fit=crop',

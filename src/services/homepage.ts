@@ -36,27 +36,27 @@ export async function getHomepageSections(): Promise<HomepageSectionRow[]> {
 export async function toggleSectionStatus(section_key: string, is_enabled: boolean): Promise<boolean> {
   try {
     const supabase = createClient();
-    await supabase
+    const { error } = await supabase
       .from('homepage_sections')
       .update({ is_enabled, updated_at: new Date().toISOString() })
       .eq('section_key', section_key);
 
-    return true;
+    return !error;
   } catch {
-    return true;
+    return false;
   }
 }
 
 export async function updateSection(section_key: string, data: Partial<HomepageSectionRow>): Promise<boolean> {
   try {
     const supabase = createClient();
-    await supabase
+    const { error } = await supabase
       .from('homepage_sections')
       .update({ ...data, updated_at: new Date().toISOString() })
       .eq('section_key', section_key);
 
-    return true;
+    return !error;
   } catch {
-    return true;
+    return false;
   }
 }
