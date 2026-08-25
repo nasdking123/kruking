@@ -27,7 +27,7 @@ export default function StudentRegisterPage() {
   const [gradeLevel, setGradeLevel] = useState('ประถมศึกษาปีที่ 6');
   const [classroomName, setClassroomName] = useState('ห้อง 1');
   const [studentNumber, setStudentNumber] = useState('');
-  const [school, setSchool] = useState('โรงเรียนวัดเทพลีลา');
+  const [school, setSchool] = useState('โรงเรียนวัดบางโฉลงใน');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
@@ -171,7 +171,7 @@ export default function StudentRegisterPage() {
               type="text"
               value={school}
               onChange={(e) => setSchool(e.target.value)}
-              placeholder="เช่น โรงเรียนวัดเทพลีลา"
+              placeholder="เช่น โรงเรียนวัดบางโฉลงใน"
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
             />
           </div>

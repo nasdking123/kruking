@@ -78,7 +78,7 @@ export default function StudentDashboardPage() {
           grade_level: 'ประถมศึกษาปีที่ 6',
           student_number: '-',
           classroom_name: 'ห้อง 1',
-          school: 'โรงเรียนวัดเทพลีลา',
+          school: 'โรงเรียนวัดบางโฉลงใน',
           created_at: user.created_at,
         });
         setEnrollments(enr);

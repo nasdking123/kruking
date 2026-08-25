@@ -78,7 +78,7 @@ export function PublicFooter() {
           <div className="flex items-center gap-1 text-slate-500">
             <span>สร้างด้วย</span>
             <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 inline" />
-            <span>Next.js & Supabase (Modular Architecture)</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-300">ครูจักรพงษ์ สำรองพันธ์ โรงเรียนวัดบางโฉลงใน</span>
           </div>
         </div>
       </div>

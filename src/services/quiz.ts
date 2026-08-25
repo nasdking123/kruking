@@ -77,10 +77,13 @@ export async function saveQuizAttempt(attempt: {
         quiz_id: attempt.quiz_id,
         user_id: currentUserId || null,
         score: attempt.score,
-        total_points: attempt.total_points,
+        total_score: attempt.total_points,
         percentage,
+        correct_count: attempt.score,
+        incorrect_count: Math.max(0, attempt.total_points - attempt.score),
         time_spent_seconds: attempt.time_spent_seconds,
-        answers: attempt.answers,
+        started_at: new Date().toISOString(),
+        submitted_at: new Date().toISOString(),
       }])
       .select()
       .single();

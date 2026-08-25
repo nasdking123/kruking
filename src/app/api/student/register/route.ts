@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       email: cleanUsername,
       full_name: fullName.trim(),
       role: 'student',
-      school: school?.trim() || 'โรงเรียนวัดเทพลีลา',
+      school: school?.trim() || 'โรงเรียนวัดบางโฉลงใน',
       social_links: {
         username: rawUser.replace('@student.kruking.ac.th', ''),
         grade_level: gradeLevel || 'ประถมศึกษาปีที่ 6',
