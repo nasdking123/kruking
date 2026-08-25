@@ -2,15 +2,15 @@ import { createClient } from '@/lib/supabase/client';
 import type { Database } from '@/types/database';
 
 export type QuizRow = Database['public']['Tables']['quizzes']['Row'];
-export type QuizQuestionRow = Database['public']['Tables']['quiz_questions']['Row'];
-export type QuizChoiceRow = Database['public']['Tables']['quiz_choices']['Row'];
+export type QuestionRow = Database['public']['Tables']['quiz_questions']['Row'];
+export type ChoiceRow = Database['public']['Tables']['quiz_choices']['Row'];
 
-export interface QuestionWithChoices extends QuizQuestionRow {
-  choices: QuizChoiceRow[];
+export interface QuestionWithChoices extends QuestionRow {
+  choices: ChoiceRow[];
 }
 
 export interface QuizWithQuestions extends QuizRow {
-  questions: QuestionWithChoices[];
+  questions?: QuestionWithChoices[];
 }
 
 export async function getQuizzes(): Promise<QuizWithQuestions[]> {
@@ -20,7 +20,6 @@ export async function getQuizzes(): Promise<QuizWithQuestions[]> {
       .from('quizzes')
       .select('*, questions:quiz_questions(*, choices:quiz_choices(*))')
       .eq('published', true)
-      .eq('visibility', 'public')
       .order('created_at', { ascending: false });
 
     if (error || !data) {
@@ -36,6 +35,7 @@ export async function getQuizById(idOrSlug: string): Promise<QuizWithQuestions |
   try {
     const supabase = createClient();
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+    
     const query = supabase
       .from('quizzes')
       .select('*, questions:quiz_questions(*, choices:quiz_choices(*))');
@@ -63,12 +63,19 @@ export async function saveQuizAttempt(attempt: {
 }) {
   try {
     const supabase = createClient();
-    const percentage = attempt.total_points > 0 ? (attempt.score / attempt.total_points) * 100 : 0;
+    let currentUserId = attempt.user_id;
+    if (!currentUserId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      currentUserId = user?.id;
+    }
+
+    const percentage = attempt.total_points > 0 ? Math.round((attempt.score / attempt.total_points) * 100) : 0;
+    
     const { data, error } = await supabase
       .from('quiz_attempts')
       .insert([{
         quiz_id: attempt.quiz_id,
-        user_id: attempt.user_id || null,
+        user_id: currentUserId || null,
         score: attempt.score,
         total_points: attempt.total_points,
         percentage,

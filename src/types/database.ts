@@ -858,23 +858,50 @@ export interface Database {
         };
         Relationships: [];
       };
+      classroom_members: {
+        Row: {
+          id: string;
+          classroom_id: string;
+          user_id: string;
+          role: string;
+          joined_at: string;
+        };
+        Insert: {
+          id?: string;
+          classroom_id: string;
+          user_id: string;
+          role?: string;
+          joined_at?: string;
+        };
+        Update: {
+          id?: string;
+          classroom_id?: string;
+          user_id?: string;
+          role?: string;
+          joined_at?: string;
+        };
+        Relationships: [];
+      };
       views: {
         Row: {
           id: string;
           entity_type: string;
           entity_id: string;
+          user_id: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
           entity_type: string;
           entity_id: string;
+          user_id?: string | null;
           created_at?: string;
         };
         Update: {
           id?: string;
           entity_type?: string;
           entity_id?: string;
+          user_id?: string | null;
           created_at?: string;
         };
         Relationships: [];

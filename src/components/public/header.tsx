@@ -14,7 +14,8 @@ import {
   FileText,
   Gamepad2,
   FolderOpen,
-  Trophy
+  Trophy,
+  GraduationCap
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/common/theme-toggle';
 
@@ -94,13 +95,23 @@ export function PublicHeader() {
           {/* Theme Toggle */}
           <ThemeToggle />
 
+          {/* Student Portal Button */}
+          <Link
+            href="/student/dashboard"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-colors"
+          >
+            <GraduationCap className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">ระบบนักเรียน</span>
+            <span className="sm:hidden">นักเรียน</span>
+          </Link>
+
           {/* Admin / Login Button */}
           <Link
             href="/admin"
-            className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors"
+            className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 text-xs font-bold shadow-xs transition-colors"
           >
             <LayoutDashboard className="w-3.5 h-3.5" />
-            <span>ระบบหลังบ้าน</span>
+            <span>ครูผู้สอน</span>
           </Link>
 
           {/* Mobile Menu Button */}

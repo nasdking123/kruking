@@ -22,7 +22,8 @@ import {
   PlusCircle,
   ExternalLink,
   ShieldCheck,
-  LogOut
+  LogOut,
+  GraduationCap
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
@@ -61,6 +62,7 @@ const adminNavGroups: NavGroup[] = [
     label: 'การเรียนรู้ & เครื่องมือ AI',
     items: [
       { title: 'ห้องเรียนออนไลน์ (Classroom)', href: '/admin/classroom', icon: School, badge: 'ใหม่' },
+      { title: 'ข้อมูลนักเรียน & คะแนนสอบ (Students)', href: '/admin/students', icon: GraduationCap, badge: 'ใหม่' },
       { title: 'จัดการแบบทดสอบ (Quizzes)', href: '/admin/quizzes', icon: CheckSquare },
       { title: 'ศูนย์ดาวน์โหลด (Downloads)', href: '/downloads', icon: Download },
       { title: 'ผู้ช่วย AI สำหรับครู (AI Tools)', href: '/ai', icon: Bot, badge: 'AI' },

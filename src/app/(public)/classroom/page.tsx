@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { School, KeyRound, BookOpen, ArrowRight, CheckCircle2, PlayCircle, Loader2 } from 'lucide-react';
+import { School, KeyRound, BookOpen, ArrowRight, PlayCircle, Loader2 } from 'lucide-react';
 import { getClassrooms, getClassroomByJoinCode, type ClassroomWithLessons } from '@/services/classroom';
 import { useToast } from '@/components/ui/toast';
 

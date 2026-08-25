@@ -19,6 +19,9 @@ import { YouTubePlayer } from '@/components/common/youtube-player';
 import type { ClassroomWithLessons, LessonRow } from '@/services/classroom';
 import { useToast } from '@/components/ui/toast';
 
+import { createClient } from '@/lib/supabase/client';
+import { logLessonActivity } from '@/services/student';
+
 interface Props {
   classroom: ClassroomWithLessons;
   lesson: LessonRow;
@@ -44,12 +47,37 @@ export function LessonInteractiveViewer({ classroom, lesson }: Props) {
     () => false
   );
 
+  React.useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        logLessonActivity({
+          userId: user.id,
+          lessonId: lesson.id,
+          action: 'view',
+        });
+      }
+    });
+  }, [lesson.id]);
+
   const toggleCompleted = () => {
     const nextState = !isCompleted;
     if (typeof window !== 'undefined') {
       localStorage.setItem(storageKey, String(nextState));
       window.dispatchEvent(new Event('storage'));
     }
+
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        logLessonActivity({
+          userId: user.id,
+          lessonId: lesson.id,
+          action: nextState ? 'complete' : 'view',
+        });
+      }
+    });
+
     if (nextState) {
       toast.success('🎉 ยินดีด้วย!', `คุณได้เรียนจบบทเรียน "${lesson.title}" เรียบร้อยแล้ว`);
     } else {
