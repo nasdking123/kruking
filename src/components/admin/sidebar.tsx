@@ -42,8 +42,9 @@ const adminNavGroups: NavGroup[] = [
     label: 'การจัดการเนื้อหา & สื่อ',
     items: [
       { title: 'ภาพรวมระบบ (Overview)', href: '/admin', icon: LayoutDashboard },
+      { title: 'รายวิชา & หน่วยการสอน (Units)', href: '/admin/curriculum', icon: Layers, badge: 'ใหม่' },
       { title: 'จัดการเนื้อหาทั้งหมด (Works)', href: '/admin/works', icon: Trophy },
-      { title: 'เพิ่มเนื้อหาใหม่ (Add Work)', href: '/admin/works/new', icon: PlusCircle, badge: 'ใหม่' },
+      { title: 'เพิ่มเนื้อหาใหม่ (Add Work)', href: '/admin/works/new', icon: PlusCircle },
       { title: 'หมวดหมู่สื่อ (Categories)', href: '/admin/categories', icon: FolderOpen },
     ],
   },
