@@ -158,36 +158,40 @@ export async function savePage(pageData: Partial<PageRow>): Promise<{ success: b
     };
 
     if (isUuid && pageData.id) {
-      // UPDATE existing page
-      const { data, error } = await supabase
+      // Update by ID
+      const { error: updateError } = await supabase
         .from('pages')
         .update(recordData as PageUpdate)
-        .eq('id', pageData.id)
-        .select()
-        .single();
+        .eq('id', pageData.id);
 
-      if (error) {
-        return { success: false, error: error.message };
+      if (updateError) {
+        // Fallback upsert by slug
+        const { error: upsertError } = await supabase
+          .from('pages')
+          .upsert({ ...recordData, id: pageData.id } as PageInsert, { onConflict: 'slug' });
+
+        if (upsertError) return { success: false, error: upsertError.message };
       }
-      return { success: true, data: data as PageRow };
+      return { success: true };
     } else {
-      // INSERT new page
-      const { data, error } = await supabase
+      // Upsert by slug
+      const { error: insertError } = await supabase
         .from('pages')
-        .insert([{
-          ...recordData,
-          created_at: new Date().toISOString(),
-        } as PageInsert])
-        .select()
-        .single();
+        .upsert(
+          {
+            ...recordData,
+            created_at: new Date().toISOString(),
+          } as PageInsert,
+          { onConflict: 'slug' }
+        );
 
-      if (error) {
-        return { success: false, error: error.message };
+      if (insertError) {
+        return { success: false, error: insertError.message };
       }
-      return { success: true, data: data as PageRow };
+      return { success: true };
     }
-  } catch (err) {
-    return { success: false, error: String(err) };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
   }
 }
 
@@ -202,7 +206,7 @@ export async function deletePage(id: string): Promise<{ success: boolean; error?
     const { error } = await query;
     if (error) return { success: false, error: error.message };
     return { success: true };
-  } catch (err) {
-    return { success: false, error: String(err) };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
   }
 }

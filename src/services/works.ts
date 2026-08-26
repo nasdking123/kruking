@@ -143,7 +143,7 @@ export async function createCategory(data: {
 }): Promise<{ success: boolean; data?: CategoryRow; error?: string }> {
   try {
     const supabase = createClient();
-    const { data: created, error } = await supabase
+    const { error } = await supabase
       .from('categories')
       .insert({
         name: data.name.trim(),
@@ -152,12 +152,10 @@ export async function createCategory(data: {
         icon: data.icon || 'FolderOpen',
         module_key: data.module_key || 'resources',
         sort_order: data.sort_order || 1,
-      })
-      .select()
-      .single();
+      });
 
     if (error) return { success: false, error: error.message };
-    return { success: true, data: created as CategoryRow };
+    return { success: true };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };
   }

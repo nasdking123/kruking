@@ -151,7 +151,7 @@ export async function saveQuizAttempt(attempt: {
     const percentage = attempt.total_points > 0 ? Math.round((attempt.score / attempt.total_points) * 100) : 0;
     const isPassed = percentage >= passingScore;
     
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('quiz_attempts')
       .insert([{
         quiz_id: attempt.quiz_id,
@@ -171,9 +171,7 @@ export async function saveQuizAttempt(attempt: {
         time_spent_seconds: attempt.time_spent_seconds,
         started_at: new Date().toISOString(),
         submitted_at: new Date().toISOString(),
-      }])
-      .select()
-      .single();
+      }]);
 
     if (error) {
       return { success: false, error: error.message, id: `attempt-${Date.now()}` };
@@ -209,7 +207,7 @@ export async function saveQuizAttempt(attempt: {
       }
     }
 
-    return { success: true, data, id: data?.id || `attempt-${Date.now()}`, isPassed, percentage };
+    return { success: true, id: `attempt-${Date.now()}`, isPassed, percentage };
   } catch (err) {
     return { success: false, error: String(err), id: `attempt-${Date.now()}` };
   }
