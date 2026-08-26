@@ -40,7 +40,11 @@ export default function AdminPagesListPage() {
 
   const handleDelete = async (id: string, title: string) => {
     if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบหน้า "${title}"?`)) {
-      await deletePage(id);
+      const res = await deletePage(id);
+      if (!res.success) {
+        toast.error('ลบไม่สำเร็จ', res.error || 'เกิดข้อผิดพลาดในการลบหน้าเว็บ');
+        return;
+      }
       toast.success('ลบหน้าเว็บสำเร็จ', `หน้า "${title}" ถูกลบเรียบร้อยแล้ว`);
       loadPages();
     }

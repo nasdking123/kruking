@@ -7,17 +7,18 @@ type PageUpdate = Database['public']['Tables']['pages']['Update'];
 
 export const INITIAL_PAGES: PageRow[] = [
   {
-    id: 'page-1',
+    id: 'e1000000-0000-0000-0000-000000000001',
     title: 'เกี่ยวกับครูคิง (About Teacher)',
     slug: 'about',
     excerpt: 'ประวัติ ผลงาน ประสบการณ์การสอน และวิสัยทัศน์ทางการศึกษาของครูคิง',
     content: `
-# ประวัติและผลงาน ครูคิง
+# ประวัติและผลงาน ครูจักรพงษ์ สำรองพันธ์ (ครูคิง)
 
 ยินดีต้อนรับสู่ห้องสื่อการเรียนรู้และพื้นที่แบ่งปันประสบการณ์การจัดการเรียนรู้ของ **ครูคิง** 
 
 ## ข้อมูลทั่วไป
 - **กลุ่มสาระการเรียนรู้:** วิทยาศาสตร์และเทคโนโลยี (วิทยาการคำนวณ)
+- **สถานศึกษา:** โรงเรียนวัดบางโฉลงใน
 - **ประสบการณ์การสอน:** มากกว่า 8 ปี
 - **ความเชี่ยวชาญ:** การจัดกิจกรรม Active Learning, Unplugged Coding, การพัฒนาสื่อการเรียนรู้ และการประยุกต์ใช้ AI ในการจัดการศึกษา
 
@@ -37,7 +38,7 @@ export const INITIAL_PAGES: PageRow[] = [
     deleted_at: null,
   },
   {
-    id: 'page-2',
+    id: 'e1000000-0000-0000-0000-000000000002',
     title: 'ติดต่อสอบถาม (Contact Us)',
     slug: 'contact',
     excerpt: 'ช่องทางการติดต่อ ขอคำปรึกษาด้านสื่อการสอน และการจัดอบรมเชิงปฏิบัติการ',
@@ -50,6 +51,7 @@ export const INITIAL_PAGES: PageRow[] = [
 - **โทรศัพท์:** 081-234-5678
 - **Facebook Page:** ห้องสื่อครูคิง
 - **LINE Official:** @kruking
+- **โรงเรียน:** โรงเรียนวัดบางโฉลงใน
     `,
     cover_image: null,
     template: 'default',
@@ -77,62 +79,130 @@ export async function getPages(): Promise<PageRow[]> {
     if (error || !data || data.length === 0) {
       return INITIAL_PAGES;
     }
-    return data;
+    return data as PageRow[];
   } catch {
     return INITIAL_PAGES;
   }
 }
 
 export async function getPageBySlug(slug: string): Promise<PageRow | null> {
-  const pages = await getPages();
-  return pages.find((p) => p.slug === slug) || null;
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('pages')
+      .select('*')
+      .eq('slug', slug)
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    if (!error && data) {
+      return data as PageRow;
+    }
+    return INITIAL_PAGES.find((p) => p.slug === slug) || null;
+  } catch {
+    return INITIAL_PAGES.find((p) => p.slug === slug) || null;
+  }
 }
 
 export async function getPageById(id: string): Promise<PageRow | null> {
-  const pages = await getPages();
-  return pages.find((p) => p.id === id) || null;
-}
-
-export async function savePage(pageData: Partial<PageRow>): Promise<PageRow> {
-  const page: PageRow = {
-    id: pageData.id || 'p-' + Date.now(),
-    title: pageData.title || 'หน้าใหม่',
-    slug: pageData.slug || 'new-page-' + Date.now(),
-    excerpt: pageData.excerpt || null,
-    content: pageData.content || '',
-    cover_image: pageData.cover_image || null,
-    template: pageData.template || 'default',
-    status: pageData.status || 'published',
-    visibility: pageData.visibility || 'public',
-    seo_title: pageData.seo_title || pageData.title || null,
-    seo_description: pageData.seo_description || pageData.excerpt || null,
-    og_image: pageData.og_image || pageData.cover_image || null,
-    author_id: null,
-    created_at: pageData.created_at || new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    deleted_at: null,
-  };
-
   try {
     const supabase = createClient();
-    if (pageData.id && !pageData.id.startsWith('p-')) {
-      await supabase.from('pages').update(page as PageUpdate).eq('id', pageData.id);
-    } else {
-      await supabase.from('pages').insert([page as PageInsert]);
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    
+    if (isUuid) {
+      const { data, error } = await supabase
+        .from('pages')
+        .select('*')
+        .eq('id', id)
+        .is('deleted_at', null)
+        .maybeSingle();
+
+      if (!error && data) {
+        return data as PageRow;
+      }
     }
-  } catch {
-    // fallback
-  }
 
-  return page;
+    const pages = await getPages();
+    return pages.find((p) => p.id === id || p.slug === id) || null;
+  } catch {
+    return INITIAL_PAGES.find((p) => p.id === id || p.slug === id) || null;
+  }
 }
 
-export async function deletePage(id: string): Promise<boolean> {
+export async function savePage(pageData: Partial<PageRow>): Promise<{ success: boolean; data?: PageRow; error?: string }> {
   try {
     const supabase = createClient();
-    await supabase.from('pages').update({ deleted_at: new Date().toISOString() }).eq('id', id);
-    return true;
-  } catch {
-    return true;
+    const isUuid = pageData.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pageData.id);
+
+    const cleanTitle = (pageData.title || 'หน้าใหม่').trim();
+    const cleanSlug = (pageData.slug || `page-${Date.now()}`)
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s\u0E00-\u0E7F-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    const recordData = {
+      title: cleanTitle,
+      slug: cleanSlug,
+      excerpt: pageData.excerpt?.trim() || null,
+      content: pageData.content || '',
+      cover_image: pageData.cover_image?.trim() || null,
+      template: pageData.template || 'default',
+      status: pageData.status || 'published',
+      visibility: pageData.visibility || 'public',
+      seo_title: pageData.seo_title?.trim() || cleanTitle,
+      seo_description: pageData.seo_description?.trim() || pageData.excerpt?.trim() || null,
+      og_image: pageData.og_image?.trim() || pageData.cover_image?.trim() || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (isUuid && pageData.id) {
+      // UPDATE existing page
+      const { data, error } = await supabase
+        .from('pages')
+        .update(recordData as PageUpdate)
+        .eq('id', pageData.id)
+        .select()
+        .single();
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true, data: data as PageRow };
+    } else {
+      // INSERT new page
+      const { data, error } = await supabase
+        .from('pages')
+        .insert([{
+          ...recordData,
+          created_at: new Date().toISOString(),
+        } as PageInsert])
+        .select()
+        .single();
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true, data: data as PageRow };
+    }
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
+export async function deletePage(id: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = createClient();
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    
+    let query = supabase.from('pages').update({ deleted_at: new Date().toISOString() });
+    query = isUuid ? query.eq('id', id) : query.eq('slug', id);
+
+    const { error } = await query;
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: String(err) };
   }
 }

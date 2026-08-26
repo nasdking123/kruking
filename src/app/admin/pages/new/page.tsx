@@ -53,9 +53,17 @@ export default function AdminNewPage() {
     }
 
     setLoading(true);
-    await savePage(formData as Partial<PageRow>);
-    toast.success('สร้างหน้าเว็บสำเร็จ', `สร้างหน้า "${formData.title}" เรียบร้อยแล้ว`);
+    const res = await savePage(formData as Partial<PageRow>);
+    setLoading(false);
+
+    if (!res.success) {
+      toast.error('สร้างหน้าเว็บไม่สำเร็จ', res.error || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      return;
+    }
+
+    toast.success('สร้างหน้าเว็บสำเร็จ', `สร้างหน้า "${formData.title}" เรียบร้อยแล้ว (อัปเดตขึ้นหน้าเว็บเรียลไทม์ทันที)`);
     router.push('/admin/pages');
+    router.refresh();
   };
 
   return (
