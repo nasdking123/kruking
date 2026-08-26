@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useSyncExternalStore } from 'react';
+import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { 
   CheckCircle2, 
@@ -13,7 +13,10 @@ import {
   CheckSquare, 
   FileText, 
   ChevronRight,
-  Award
+  Award,
+  Lock,
+  LogIn,
+  Loader2
 } from 'lucide-react';
 import { YouTubePlayer } from '@/components/common/youtube-player';
 import type { ClassroomWithLessons, LessonRow } from '@/services/classroom';
@@ -38,7 +41,8 @@ export function LessonInteractiveViewer({ classroom, lesson }: Props) {
   const toast = useToast();
   const [showSelfCheck, setShowSelfCheck] = useState(false);
   const [showCertModal, setShowCertModal] = useState(false);
-  const [studentInfo, setStudentInfo] = useState<{ name: string; grade?: string; school?: string } | null>(null);
+  const [studentInfo, setStudentInfo] = useState<{ id: string; name: string; grade?: string; school?: string } | null>(null);
+  const [authChecking, setAuthChecking] = useState(true);
 
   const storageKey = `kruking_lesson_completed_${lesson.id}`;
 
@@ -51,25 +55,40 @@ export function LessonInteractiveViewer({ classroom, lesson }: Props) {
     () => false
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
+    let ignore = false;
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        logLessonActivity({
-          userId: user.id,
-          lessonId: lesson.id,
-          action: 'view',
-        });
-        setStudentInfo({
-          name: user.user_metadata?.full_name || 'นักเรียนยอดเยี่ยม',
-          grade: classroom.grade_level || 'ประถมศึกษาปีที่ 6',
-          school: 'โรงเรียนวัดบางโฉลงใน',
-        });
+      if (!ignore) {
+        if (user) {
+          const info = {
+            id: user.id,
+            name: user.user_metadata?.full_name || 'นักเรียนยอดเยี่ยม',
+            grade: classroom.grade_level || 'ประถมศึกษาปีที่ 6',
+            school: 'โรงเรียนวัดบางโฉลงใน',
+          };
+          setStudentInfo(info);
+          logLessonActivity({
+            userId: user.id,
+            lessonId: lesson.id,
+            action: 'view',
+          });
+        }
+        setAuthChecking(false);
       }
     });
+
+    return () => {
+      ignore = true;
+    };
   }, [lesson.id, classroom.grade_level]);
 
   const handleToggleComplete = async () => {
+    if (!studentInfo) {
+      toast.error('กรุณาเข้าสู่ระบบ', 'นักเรียนต้องเข้าสู่ระบบก่อนบันทึกความก้าวหน้า');
+      return;
+    }
+
     const nextState = !isCompleted;
     if (typeof window !== 'undefined') {
       localStorage.setItem(storageKey, String(nextState));
@@ -78,17 +97,67 @@ export function LessonInteractiveViewer({ classroom, lesson }: Props) {
 
     if (nextState) {
       toast.success('บันทึกความก้าวหน้าสำเร็จ!', `คุณได้เรียนจบ "${lesson.title}" แล้ว`);
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        logLessonActivity({
-          userId: user.id,
-          lessonId: lesson.id,
-          action: 'complete',
-        });
-      }
+      logLessonActivity({
+        userId: studentInfo.id,
+        lessonId: lesson.id,
+        action: 'complete',
+      });
     }
   };
+
+  if (authChecking) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <span className="text-xs text-slate-500 font-bold">กำลังตรวจสอบสิทธิ์การเข้าสู่ห้องเรียนออนไลน์...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Auth Gate: Student must be logged in to access online classroom lessons
+  if (!studentInfo) {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-6 animate-in fade-in">
+        <div className="w-16 h-16 rounded-3xl bg-blue-100 dark:bg-blue-950 text-blue-600 flex items-center justify-center mx-auto shadow-md">
+          <Lock className="w-8 h-8" />
+        </div>
+
+        <div className="space-y-2">
+          <span className="px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 text-xs font-bold">
+            {classroom.title}
+          </span>
+          <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white pt-1">
+            กรุณาเข้าสู่ระบบก่อนเข้าเรียน
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+            ระบบจำเป็นต้องระบุตัวตนนามสกุลและระดับชั้นของนักเรียน เพื่อบันทึกเวลาดูคลิปวิดีโอ (Log), บันทึกการเรียนจบ, ส่งการบ้าน และสะสมคะแนนบน Leaderboard
+          </p>
+        </div>
+
+        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-md space-y-4">
+          <Link
+            href={`/student/login?redirectTo=/classroom/${classroom.slug}/lessons/${lesson.id}`}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition-all"
+          >
+            <LogIn className="w-4 h-4" />
+            <span>เข้าสู่ระบบนักเรียน (Student Login)</span>
+          </Link>
+
+          <div className="text-xs text-slate-400">
+            ยังไม่มีชื่อผู้ใช้นักเรียน?{' '}
+            <Link
+              href="/student/register"
+              className="text-blue-600 dark:text-blue-400 font-bold hover:underline"
+            >
+              สมัครสมาชิกที่นี่ (ไม่ต้องใช้อีเมล)
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const allLessons = classroom.lessons || [];
   const currentIndex = allLessons.findIndex((l) => l.id === lesson.id);
@@ -97,7 +166,7 @@ export function LessonInteractiveViewer({ classroom, lesson }: Props) {
 
   const certData: CertificateData = {
     certificateNo: generateCertificateCode('KCL-COURSE'),
-    studentName: studentInfo?.name || 'นักเรียนยอดเยี่ยม',
+    studentName: studentInfo.name,
     gradeLevel: classroom.grade_level || 'ประถมศึกษาปีที่ 6',
     schoolName: 'โรงเรียนวัดบางโฉลงใน',
     title: `ผ่านการศึกษาและเรียนรู้ครบตามหลักสูตร "${classroom.title}"`,
@@ -128,7 +197,7 @@ export function LessonInteractiveViewer({ classroom, lesson }: Props) {
         <div>
           <div className="flex items-center gap-2 text-blue-600 font-bold text-xs mb-1">
             <School className="w-4 h-4" />
-            <span>{classroom.title} ({classroom.grade_level || 'ประถมศึกษา'})</span>
+            <span>{classroom.title} ({classroom.grade_level || 'ประถมศึกษา'}) • ผู้เรียน: {studentInfo.name}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             {lesson.title}
