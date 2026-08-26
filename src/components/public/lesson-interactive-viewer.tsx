@@ -24,6 +24,7 @@ import { isClassroomPublic, type ClassroomWithLessons, type LessonRow } from '@/
 import { useToast } from '@/components/ui/toast';
 import { createClient } from '@/lib/supabase/client';
 import { logLessonActivity } from '@/services/student';
+import { updateLessonProgressAction } from '@/actions/course-progress-actions';
 import { AssignmentSubmissionCard } from './assignment-submission-card';
 import { CertificateModal } from './certificate-modal';
 import { generateCertificateCode, getThaiCertificateDate, type CertificateData } from '@/services/certificate';
@@ -103,6 +104,22 @@ export function LessonInteractiveViewer({ classroom, lesson }: Props) {
         userId: studentInfo.id,
         lessonId: lesson.id,
         action: 'complete',
+      });
+      // Update Database Course Enrollment and Progress
+      updateLessonProgressAction({
+        classroomId: classroom.id,
+        lessonId: lesson.id,
+        isCompleted: true,
+      }).then((res) => {
+        if (res.success && res.isCourseCompleted) {
+          toast.success('🎉 ยินดีด้วย!', 'คุณเรียนจบคอร์สนี้ 100% แล้ว รับแต้มโบนัส +50 คะแนน!');
+        }
+      });
+    } else {
+      updateLessonProgressAction({
+        classroomId: classroom.id,
+        lessonId: lesson.id,
+        isCompleted: false,
       });
     }
   };

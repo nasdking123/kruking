@@ -658,6 +658,7 @@ export interface Database {
         Row: {
           id: string;
           course_id: string;
+          classroom_id?: string | null;
           title: string;
           description: string | null;
           content: string | null;
@@ -670,6 +671,7 @@ export interface Database {
         Insert: {
           id?: string;
           course_id: string;
+          classroom_id?: string | null;
           title: string;
           description?: string | null;
           content?: string | null;
@@ -682,6 +684,7 @@ export interface Database {
         Update: {
           id?: string;
           course_id?: string;
+          classroom_id?: string | null;
           title?: string;
           description?: string | null;
           content?: string | null;
@@ -1270,6 +1273,75 @@ export interface Database {
           score?: number;
           notes?: string | null;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      course_enrollments: {
+        Row: {
+          id: string;
+          user_id: string;
+          classroom_id: string;
+          status: 'active' | 'completed' | 'dropped';
+          progress_percentage: number;
+          enrolled_at: string;
+          completed_at: string | null;
+          last_accessed_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          classroom_id: string;
+          status?: 'active' | 'completed' | 'dropped';
+          progress_percentage?: number;
+          enrolled_at?: string;
+          completed_at?: string | null;
+          last_accessed_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          classroom_id?: string;
+          status?: 'active' | 'completed' | 'dropped';
+          progress_percentage?: number;
+          enrolled_at?: string;
+          completed_at?: string | null;
+          last_accessed_at?: string;
+        };
+        Relationships: [];
+      };
+      lesson_progress: {
+        Row: {
+          id: string;
+          user_id: string;
+          classroom_id: string;
+          lesson_id: string;
+          is_completed: boolean;
+          completed_at: string | null;
+          time_spent_seconds: number;
+          last_position_seconds: number;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          classroom_id: string;
+          lesson_id: string;
+          is_completed?: boolean;
+          completed_at?: string | null;
+          time_spent_seconds?: number;
+          last_position_seconds?: number;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          classroom_id?: string;
+          lesson_id?: string;
+          is_completed?: boolean;
+          completed_at?: string | null;
+          time_spent_seconds?: number;
+          last_position_seconds?: number;
+          updated_at?: string;
         };
         Relationships: [];
       };
