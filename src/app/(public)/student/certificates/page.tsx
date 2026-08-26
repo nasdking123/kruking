@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
   Award, 
@@ -340,19 +341,30 @@ export default function StudentCertificatesPage() {
                       </p>
                     </div>
 
-                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400 font-mono gap-2 flex-wrap">
                       <span>วันที่: {cert.issueDate}</span>
-                      {cert.imageUrl && (
-                        <a
-                          href={cert.imageUrl}
+                      <div className="flex items-center gap-3">
+                        <Link
+                          href={`/verify-cert/${cert.id}`}
                           target="_blank"
-                          rel="noreferrer"
-                          className="text-blue-600 font-bold flex items-center gap-1 hover:underline"
+                          className="text-emerald-600 font-bold flex items-center gap-1 hover:underline"
                         >
-                          <ExternalLink className="w-3 h-3" />
-                          <span>ดูรูปเต็ม</span>
-                        </a>
-                      )}
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>ตรวจสอบออนไลน์</span>
+                        </Link>
+
+                        {cert.imageUrl && (
+                          <a
+                            href={cert.imageUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-blue-600 font-bold flex items-center gap-1 hover:underline"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span>ดูรูปเต็ม</span>
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
