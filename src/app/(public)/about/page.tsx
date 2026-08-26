@@ -8,23 +8,29 @@ import {
   BookOpen, 
   Sparkles, 
   Mail, 
-  Code, 
-  CheckCircle2, 
-  ArrowRight
+  CheckCircle2
 } from 'lucide-react';
+import { getPageBySlug } from '@/services/pages';
+import { formatDateThai } from '@/lib/utils';
 
-export const metadata: Metadata = {
-  title: 'เกี่ยวกับครูคิง (About Kru King) | ครูผู้สอนวิทยาการคำนวณและเทคโนโลยี',
-  description: 'ประวัติ ผลงาน นวัตกรรมการศึกษา Active Learning และประสบการณ์การจัดการเรียนรู้วิทยาการคำนวณของครูคิง',
-};
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
-export default function AboutPage() {
-  const highlights = [
-    { title: 'กลุ่มสาระการเรียนรู้', desc: 'วิทยาศาสตร์และเทคโนโลยี (วิทยาการคำนวณ)' },
-    { title: 'ประสบการณ์การสอน', desc: 'มากกว่า 8 ปี ในระดับประถมศึกษาและมัธยมศึกษา' },
-    { title: 'ความเชี่ยวชาญ', desc: 'Active Learning 5E, Unplugged Coding, AI for Teachers' },
-    { title: 'งานวิจัยและนวัตกรรม', desc: 'วิจัยในชั้นเรียน (CAR) และบอร์ดเกมเสริมทักษะตรรกะ' },
-  ];
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getPageBySlug('about');
+  return {
+    title: page?.seo_title || page?.title || 'เกี่ยวกับครูคิง (About Teacher) | ครูผู้สอนวิทยาการคำนวณและเทคโนโลยี',
+    description: page?.seo_description || page?.excerpt || 'ประวัติ ผลงาน นวัตกรรมการศึกษา Active Learning และประสบการณ์การจัดการเรียนรู้วิทยาการคำนวณของครูคิง',
+  };
+}
+
+export default async function AboutPage() {
+  const page = await getPageBySlug('about');
+
+  const title = page?.title || 'ยินดีต้อนรับสู่ห้องสื่อ ครูจักรพงษ์ สำรองพันธ์ (ครูคิง)';
+  const excerpt = page?.excerpt || 'ครูผู้มุ่งมั่นพัฒนาการศึกษาสมัยใหม่ มุ่งเน้นการจัดกิจกรรมการเรียนรู้แบบ Active Learning พัฒนาทักษะการคิดเชิงคำนวณ (Computational Thinking) และถ่ายทอดองค์ความรู้ด้านเทคโนโลยีดิจิทัลสู่ผู้เรียน';
+  const coverImage = page?.cover_image || 'https://images.unsplash.com/photo-1577896851231-70ef18881754?q=80&w=800&auto=format&fit=crop';
+  const content = page?.content || '';
 
   const skills = [
     'การจัดการเรียนรู้ Active Learning 5E',
@@ -36,17 +42,17 @@ export default function AboutPage() {
   ];
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12 animate-in fade-in">
       {/* 1. Hero Profile Banner */}
-      <section className="p-8 sm:p-12 rounded-3xl bg-gradient-to-br from-blue-50 via-white to-indigo-50/50 border border-slate-200/80 shadow-xs relative overflow-hidden">
+      <section className="p-8 sm:p-12 rounded-3xl bg-gradient-to-br from-blue-50 via-white to-indigo-50/50 dark:from-slate-900 dark:via-slate-900 dark:to-blue-950/30 border border-slate-200/80 dark:border-slate-800/80 shadow-sm relative overflow-hidden">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center relative z-10">
           
           {/* Avatar / Portrait */}
           <div className="md:col-span-4 flex justify-center">
-            <div className="relative w-48 h-48 sm:w-56 sm:h-56 rounded-3xl overflow-hidden shadow-2xl border-4 border-white">
+            <div className="relative w-48 h-48 sm:w-56 sm:h-56 rounded-3xl overflow-hidden shadow-2xl border-4 border-white dark:border-slate-800 bg-slate-100">
               <Image
-                src="https://images.unsplash.com/photo-1577896851231-70ef18881754?q=80&w=800&auto=format&fit=crop"
-                alt="ครูคิง ครูผู้สอนวิทยาการคำนวณ"
+                src={coverImage}
+                alt={title}
                 fill
                 priority
                 className="object-cover"
@@ -56,17 +62,17 @@ export default function AboutPage() {
 
           {/* Intro Text */}
           <div className="md:col-span-8 space-y-4 text-center md:text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-xs font-bold">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>ครูผู้สอนกลุ่มสาระวิทยาศาสตร์และเทคโนโลยี</span>
+              <span>ครูผู้สอนกลุ่มสาระวิทยาศาสตร์และเทคโนโลยี • โรงเรียนวัดบางโฉลงใน</span>
             </div>
 
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-              ยินดีต้อนรับสู่ห้องสื่อ ครูคิง
+            <h1 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+              {title}
             </h1>
 
-            <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
-              ครูผู้มุ่งมั่นพัฒนาการศึกษาสมัยใหม่ มุ่งเน้นการจัดกิจกรรมการเรียนรู้แบบ <strong>Active Learning</strong> พัฒนาทักษะการคิดเชิงคำนวณ (Computational Thinking) และถ่ายทอดองค์ความรู้ด้านเทคโนโลยีดิจิทัลสู่ผู้เรียนในศตวรรษที่ 21
+            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
+              {excerpt}
             </p>
 
             {/* Quick Badges */}
@@ -80,7 +86,7 @@ export default function AboutPage() {
               </Link>
               <Link
                 href="/portfolio"
-                className="px-5 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 font-bold text-xs shadow-xs transition-all flex items-center gap-1.5"
+                className="px-5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs shadow-xs transition-all flex items-center gap-1.5"
               >
                 <Award className="w-4 h-4 text-amber-500" />
                 <span>ชมผลงานและรางวัล</span>
@@ -91,67 +97,87 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* 2. Key Profile Information Cards */}
-      <section className="space-y-6">
-        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-          <GraduationCap className="w-5 h-5 text-blue-600" />
-          <span>ข้อมูลทั่วไปและประวัติการสอน</span>
+      {/* 2. Dynamic Content Body (From Admin Page Editor) */}
+      {content && (
+        <section className="p-8 sm:p-10 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-6">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+            <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <GraduationCap className="w-5 h-5 text-blue-600" />
+              <span>ข้อมูลประวัติ ผลงาน และวิสัยทัศน์</span>
+            </h2>
+            {page?.updated_at && (
+              <span className="text-xs text-slate-400">
+                อัปเดตล่าสุด: {formatDateThai(page.updated_at)}
+              </span>
+            )}
+          </div>
+
+          <article className="prose prose-slate dark:prose-invert max-w-none text-sm sm:text-base leading-relaxed space-y-4">
+            {content.split('\n\n').map((para, idx) => {
+              const trimmed = para.trim();
+              if (!trimmed) return null;
+
+              if (trimmed.startsWith('# ')) {
+                return (
+                  <h1 key={idx} className="text-2xl sm:text-3xl font-extrabold mt-6 mb-3 text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2">
+                    {trimmed.replace('# ', '')}
+                  </h1>
+                );
+              }
+              if (trimmed.startsWith('## ')) {
+                return (
+                  <h2 key={idx} className="text-xl sm:text-2xl font-bold mt-5 mb-2 text-slate-900 dark:text-white flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-blue-500" />
+                    <span>{trimmed.replace('## ', '')}</span>
+                  </h2>
+                );
+              }
+              if (trimmed.startsWith('### ')) {
+                return (
+                  <h3 key={idx} className="text-lg font-bold mt-4 mb-2 text-slate-900 dark:text-white">
+                    {trimmed.replace('### ', '')}
+                  </h3>
+                );
+              }
+              if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+                const listItems = trimmed.split('\n');
+                return (
+                  <ul key={idx} className="list-disc pl-6 space-y-1.5 text-slate-700 dark:text-slate-300">
+                    {listItems.map((li, liIdx) => (
+                      <li key={liIdx} className="leading-relaxed">
+                        {li.replace(/^[-*]\s+/, '')}
+                      </li>
+                    ))}
+                  </ul>
+                );
+              }
+              return (
+                <p key={idx} className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                  {trimmed}
+                </p>
+              );
+            })}
+          </article>
+        </section>
+      )}
+
+      {/* 3. Skill & Competency Tags */}
+      <section className="p-8 rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 space-y-4">
+        <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <BookOpen className="w-5 h-5 text-emerald-600" />
+          <span>ทักษะและความเชี่ยวชาญเฉพาะด้าน</span>
         </h2>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {highlights.map((item, idx) => (
-            <div key={idx} className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-1">
-              <span className="text-xs font-bold text-blue-600 block">{item.title}</span>
-              <p className="text-sm font-semibold text-slate-800">{item.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 3. Teaching Philosophy & Vision */}
-      <section className="p-8 rounded-3xl bg-slate-900 text-white space-y-4 shadow-xl">
-        <div className="flex items-center gap-2 text-blue-400 text-xs font-bold uppercase tracking-wider">
-          <BookOpen className="w-4 h-4" />
-          <span>วิสัยทัศน์และการจัดการเรียนรู้ (Vision & Teaching Philosophy)</span>
-        </div>
-        <h3 className="text-xl sm:text-2xl font-bold leading-snug">
-          &ldquo;การเรียนรู้ที่ดี เกิดจากการลงมือปฏิบัติจริง และมีความสุขในการแก้ปัญหา&rdquo;
-        </h3>
-        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-          เชื่อมั่นว่าการเรียนรู้ด้านโค้ดดิ้งและวิทยาการคำนวณ ไม่ได้จำกัดอยู่เพียงแค่หน้าจอคอมพิวเตอร์ แต่เป็นกระบวนการฝึกฝนทักษะการคิดอย่างเป็นระบบผ่านกิจกรรม Unplugged การเล่นเกม และการสร้างสรรค์ผลงาน เพื่อให้เด็กทุกคนสามารถนำทักษะไปต่อยอดในชีวิตจริงได้อย่างยั่งยืน
-        </p>
-      </section>
-
-      {/* 4. Skills & Expertise */}
-      <section className="space-y-6">
-        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-          <Code className="w-5 h-5 text-emerald-600" />
-          <span>ความเชี่ยวชาญและทักษะเฉพาะทาง</span>
-        </h2>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-2">
           {skills.map((skill, idx) => (
-            <div key={idx} className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex items-center gap-3">
-              <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
-              <span className="text-xs sm:text-sm font-semibold text-slate-800">{skill}</span>
+            <div
+              key={idx}
+              className="p-3.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700 shadow-xs flex items-center gap-2.5 text-xs font-bold text-slate-800 dark:text-slate-200"
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+              <span>{skill}</span>
             </div>
           ))}
         </div>
-      </section>
-
-      {/* 5. Contact CTA */}
-      <section className="p-8 rounded-3xl bg-blue-50 border border-blue-100 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
-        <div className="space-y-1">
-          <h3 className="text-lg font-bold text-slate-900">สนใจแลกเปลี่ยนเรียนรู้ หรือขอคำปรึกษาด้านสื่อการสอน?</h3>
-          <p className="text-xs text-slate-600">ยินดีแบ่งปันและร่วมพัฒนาการศึกษาไทยไปด้วยกันครับ</p>
-        </div>
-        <Link
-          href="/contact"
-          className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all flex items-center gap-2 shrink-0 cursor-pointer"
-        >
-          <span>ไปที่หน้าติดต่อสอบถาม</span>
-          <ArrowRight className="w-4 h-4" />
-        </Link>
       </section>
     </div>
   );
