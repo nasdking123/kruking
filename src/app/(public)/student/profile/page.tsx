@@ -10,7 +10,8 @@ import {
   Loader2
 } from 'lucide-react';
 import { StudentNavBar } from '@/components/public/student-nav-bar';
-import { getStudentProfile, updateStudentProfile } from '@/services/student-learning';
+import { getStudentProfile } from '@/services/student-learning';
+import { updateStudentProfileAction } from '@/actions/student-learning-actions';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
 
@@ -77,7 +78,7 @@ export default function StudentProfilePage() {
     if (!userId) return;
 
     setSaving(true);
-    const res = await updateStudentProfile(userId, {
+    const res = await updateStudentProfileAction({
       fullName,
       nickname,
       avatarUrl,

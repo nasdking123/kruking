@@ -12,9 +12,9 @@ import {
 import { 
   getCompetitions, 
   createCompetition, 
-  recordCompetitionResult, 
   type CompetitionItem 
 } from '@/services/competitions';
+import { recordCompetitionResultAction } from '@/actions/student-learning-actions';
 import { useToast } from '@/components/ui/toast';
 import { createClient } from '@/lib/supabase/client';
 
@@ -106,7 +106,7 @@ export default function AdminCompetitionsPage() {
     if (!selectedComp || !selectedStudentId) return;
 
     setRecording(true);
-    const res = await recordCompetitionResult({
+    const res = await recordCompetitionResultAction({
       competitionId: selectedComp.id,
       userId: selectedStudentId,
       rank: rankInput,

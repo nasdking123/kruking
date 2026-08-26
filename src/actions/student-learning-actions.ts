@@ -1,0 +1,238 @@
+'use server';
+
+import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
+
+// Helper: Require Admin or Teacher session
+async function requireTeacherOrAdmin() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error('กรุณาเข้าสู่ระบบก่อนทำรายการ');
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, is_active')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile || !profile.is_active || (profile.role !== 'admin' && profile.role !== 'teacher')) {
+    throw new Error('คุณไม่มีสิทธิ์ในการดำเนินการนี้ (สิทธิ์เฉพาะครูผู้สอนหรือผู้ดูแลระบบ)');
+  }
+
+  return { supabase, user, profile };
+}
+
+// 1. SECURE SERVER ACTION: Grade Student Submission & Award Points
+export async function gradeSubmissionAction(params: {
+  submissionId: string;
+  userId: string;
+  score: number;
+  maxScore: number;
+  teacherFeedback: string;
+  status: 'passed' | 'graded' | 'needs_revision';
+  lessonTitle?: string;
+}) {
+  try {
+    const { supabase, user } = await requireTeacherOrAdmin();
+
+    // Input Validation
+    const cleanScore = Math.max(0, Math.min(params.maxScore || 20, Number(params.score) || 0));
+    const cleanFeedback = (params.teacherFeedback || '').trim();
+
+    // 1. Update Submission Record
+    const { error: subError } = await supabase
+      .from('assignment_submissions')
+      .update({
+        score: cleanScore,
+        teacher_feedback: cleanFeedback || null,
+        status: params.status,
+        graded_at: new Date().toISOString(),
+      })
+      .eq('id', params.submissionId);
+
+    if (subError) {
+      return { success: false, error: subError.message };
+    }
+
+    // 2. Award Points to Student Ledger (Prevent Duplicate for same submission)
+    if (cleanScore > 0 && (params.status === 'passed' || params.status === 'graded')) {
+      // Check if already awarded
+      const { data: existingTx } = await supabase
+        .from('point_transactions')
+        .select('id')
+        .eq('user_id', params.userId)
+        .eq('source_id', params.submissionId)
+        .eq('point_type', 'assignment')
+        .maybeSingle();
+
+      if (!existingTx) {
+        await supabase.from('point_transactions').insert({
+          user_id: params.userId,
+          amount: cleanScore,
+          point_type: 'assignment',
+          source_id: params.submissionId,
+          description: `คะแนนส่งการบ้านบทเรียน "${params.lessonTitle || 'บทเรียนออนไลน์'}" (+${cleanScore} คะแนน)`,
+          created_by: user.id,
+        });
+      }
+    }
+
+    revalidatePath('/admin/submissions');
+    revalidatePath('/student/portfolio');
+    revalidatePath('/student/points');
+    revalidatePath('/student/ranking');
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message || 'เกิดข้อผิดพลาดในการบันทึกคะแนน' };
+  }
+}
+
+// 2. SECURE SERVER ACTION: Review Student Certificate (Approve / Reject)
+export async function reviewCertificateAction(params: {
+  certificateId: string;
+  status: 'approved' | 'rejected';
+  rejectReason?: string;
+}) {
+  try {
+    const { supabase } = await requireTeacherOrAdmin();
+
+    const { error } = await supabase
+      .from('student_certificates')
+      .update({
+        status: params.status,
+        reject_reason: params.status === 'rejected' ? (params.rejectReason || 'เอกสารไม่ตรงตามเกณฑ์').trim() : null,
+        approved_at: params.status === 'approved' ? new Date().toISOString() : null,
+      })
+      .eq('id', params.certificateId);
+
+    if (error) return { success: false, error: error.message };
+
+    revalidatePath('/admin/certificates');
+    revalidatePath('/student/certificates');
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+// 3. SECURE SERVER ACTION: Record Competition Result & Award Bonus Points
+export async function recordCompetitionResultAction(params: {
+  competitionId: string;
+  userId: string;
+  rank: number;
+  score: number;
+  notes?: string;
+  pointsReward: number;
+  competitionTitle: string;
+}) {
+  try {
+    const { supabase } = await requireTeacherOrAdmin();
+
+    const { error } = await supabase
+      .from('competition_results')
+      .upsert({
+        competition_id: params.competitionId,
+        user_id: params.userId,
+        rank: Number(params.rank) || 1,
+        score: Number(params.score) || 0,
+        notes: (params.notes || '').trim() || null,
+      });
+
+    if (error) return { success: false, error: error.message };
+
+    // Award Competition Bonus Points safely
+    if (params.pointsReward > 0) {
+      const { data: existingTx } = await supabase
+        .from('point_transactions')
+        .select('id')
+        .eq('user_id', params.userId)
+        .eq('source_id', params.competitionId)
+        .eq('point_type', 'competition')
+        .maybeSingle();
+
+      if (!existingTx) {
+        await supabase.from('point_transactions').insert({
+          user_id: params.userId,
+          amount: params.pointsReward,
+          point_type: 'competition',
+          source_id: params.competitionId,
+          description: `รางวัลอันดับที่ ${params.rank} การแข่งขัน "${params.competitionTitle}" (+${params.pointsReward} คะแนน)`,
+        });
+      }
+    }
+
+    revalidatePath('/admin/competitions');
+    revalidatePath('/competitions');
+    revalidatePath(`/competitions/${params.competitionId}`);
+    revalidatePath('/student/points');
+    revalidatePath('/student/ranking');
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+// 4. SECURE SERVER ACTION: Toggle Portfolio Visibility (Student Owner Only)
+export async function togglePortfolioVisibilityAction(submissionId: string, isInPortfolio: boolean) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('กรุณาเข้าสู่ระบบก่อนทำรายการ');
+
+    const { error } = await supabase
+      .from('assignment_submissions')
+      .update({ is_in_portfolio: isInPortfolio })
+      .eq('id', submissionId)
+      .eq('user_id', user.id); // Strict ownership check
+
+    if (error) return { success: false, error: error.message };
+
+    revalidatePath('/student/portfolio');
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+// 5. SECURE SERVER ACTION: Update Student Profile (Student Owner Only)
+export async function updateStudentProfileAction(data: {
+  fullName?: string;
+  nickname?: string;
+  avatarUrl?: string;
+  gradeLevel?: string;
+  classroom?: string;
+  studentNumber?: string;
+  schoolName?: string;
+  bio?: string;
+}) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('กรุณาเข้าสู่ระบบก่อนทำรายการ');
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        full_name: data.fullName?.trim(),
+        nickname: data.nickname?.trim() || null,
+        avatar_url: data.avatarUrl || null,
+        grade_level: data.gradeLevel || null,
+        classroom: data.classroom || null,
+        student_number: data.studentNumber || null,
+        school_name: data.schoolName || null,
+        bio: data.bio?.trim() || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', user.id); // Strict ownership check
+
+    if (error) return { success: false, error: error.message };
+
+    revalidatePath('/student/profile');
+    revalidatePath('/student/ranking');
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}

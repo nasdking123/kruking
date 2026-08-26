@@ -11,9 +11,9 @@ import {
 } from 'lucide-react';
 import { 
   getAllSubmissions, 
-  gradeStudentSubmission, 
   type SubmissionGradingItem 
 } from '@/services/assignments-module';
+import { gradeSubmissionAction } from '@/actions/student-learning-actions';
 import { useToast } from '@/components/ui/toast';
 
 export default function AdminSubmissionsPage() {
@@ -62,10 +62,11 @@ export default function AdminSubmissionsPage() {
     if (!selectedSub) return;
 
     setSavingGrade(true);
-    const res = await gradeStudentSubmission({
+    const res = await gradeSubmissionAction({
       submissionId: selectedSub.id,
       userId: selectedSub.userId,
       score: scoreInput,
+      maxScore: selectedSub.maxScore,
       teacherFeedback: feedbackInput,
       status: statusInput,
       lessonTitle: selectedSub.lessonTitle,

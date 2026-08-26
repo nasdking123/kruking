@@ -16,7 +16,8 @@ import {
   Sparkles
 } from 'lucide-react';
 import { StudentNavBar } from '@/components/public/student-nav-bar';
-import { getStudentPortfolio, toggleSubmissionPortfolio, type PortfolioItem } from '@/services/student-learning';
+import { getStudentPortfolio, type PortfolioItem } from '@/services/student-learning';
+import { togglePortfolioVisibilityAction } from '@/actions/student-learning-actions';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
 
@@ -54,7 +55,7 @@ export default function StudentPortfolioPage() {
   const handleToggleVisibility = async (submissionId: string, currentState: boolean) => {
     setTogglingId(submissionId);
     const nextState = !currentState;
-    const res = await toggleSubmissionPortfolio(submissionId, nextState);
+    const res = await togglePortfolioVisibilityAction(submissionId, nextState);
     setTogglingId(null);
 
     if (res.success) {

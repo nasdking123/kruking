@@ -12,9 +12,9 @@ import {
 } from 'lucide-react';
 import { 
   getPendingCertificates, 
-  reviewCertificate, 
   type StudentCertificateItem 
 } from '@/services/student-learning';
+import { reviewCertificateAction } from '@/actions/student-learning-actions';
 import { useToast } from '@/components/ui/toast';
 
 export default function AdminCertificatesApprovalPage() {
@@ -48,7 +48,7 @@ export default function AdminCertificatesApprovalPage() {
 
   const handleApprove = async (certId: string, certTitle: string) => {
     setReviewingId(certId);
-    const res = await reviewCertificate(certId, 'approved');
+    const res = await reviewCertificateAction({ certificateId: certId, status: 'approved' });
     setReviewingId(null);
 
     if (res.success) {
@@ -64,7 +64,11 @@ export default function AdminCertificatesApprovalPage() {
     if (!selectedRejectCert) return;
 
     setReviewingId(selectedRejectCert.id);
-    const res = await reviewCertificate(selectedRejectCert.id, 'rejected', rejectReason);
+    const res = await reviewCertificateAction({
+      certificateId: selectedRejectCert.id,
+      status: 'rejected',
+      rejectReason,
+    });
     setReviewingId(null);
     setSelectedRejectCert(null);
     setRejectReason('');
