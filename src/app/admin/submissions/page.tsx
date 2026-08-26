@@ -200,8 +200,15 @@ export default function AdminSubmissionsPage() {
                       </td>
 
                       <td className="py-4 px-6 max-w-xs">
-                        <div className="font-bold text-slate-900 dark:text-white truncate">{sub.lessonTitle}</div>
-                        {sub.notes && <div className="text-[11px] text-slate-400 truncate">{sub.notes}</div>}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-slate-900 dark:text-white truncate">{sub.lessonTitle}</span>
+                          {(sub.revisionCount || 1) > 1 && (
+                            <span className="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-[10px] font-extrabold flex items-center gap-1">
+                              <span>🔄 แก้ไขครั้งที่ {sub.revisionCount}</span>
+                            </span>
+                          )}
+                        </div>
+                        {sub.notes && <div className="text-[11px] text-slate-400 truncate mt-0.5">{sub.notes}</div>}
                       </td>
 
                       <td className="py-4 px-6 font-mono text-slate-400 whitespace-nowrap">

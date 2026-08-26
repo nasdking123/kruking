@@ -31,6 +31,8 @@ export interface SubmissionGradingItem {
   status: 'pending' | 'passed' | 'graded' | 'needs_revision';
   teacherFeedback: string | null;
   isInPortfolio: boolean;
+  revisionCount?: number;
+  submittedRevisions?: Array<Record<string, unknown>>;
   submittedAt: string;
   gradedAt: string | null;
   lessonTitle?: string;
@@ -97,6 +99,8 @@ export async function getAllSubmissions(filters?: {
       status: (s.status as SubmissionGradingItem['status']) || 'pending',
       teacherFeedback: (s.teacher_feedback as string) || null,
       isInPortfolio: s.is_in_portfolio !== false,
+      revisionCount: Number(s.revision_count || 1),
+      submittedRevisions: (s.submitted_revisions as Array<Record<string, unknown>>) || [],
       submittedAt: s.submitted_at as string,
       gradedAt: (s.graded_at as string) || null,
       lessonTitle: (s.lessons as { title?: string })?.title || 'บทเรียน Scratch',

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import type { Json } from '@/types/database';
 
 // Helper: Require Admin or Teacher session
 async function requireTeacherOrAdmin() {
@@ -232,6 +233,104 @@ export async function updateStudentProfileAction(data: {
     revalidatePath('/student/profile');
     revalidatePath('/student/ranking');
     return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+// 6. SECURE SERVER ACTION: Submit or Re-submit Assignment with Revision Tracking
+export async function submitAssignmentAction(params: {
+  lessonId: string;
+  classroomId?: string | null;
+  submissionType: 'link' | 'image' | 'text';
+  contentUrl?: string;
+  notes?: string;
+}) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('กรุณาเข้าสู่ระบบก่อนส่งการบ้าน');
+
+    const cleanContentUrl = (params.contentUrl || '').trim();
+    const cleanNotes = (params.notes || '').trim();
+
+    if (params.submissionType !== 'text' && !cleanContentUrl) {
+      throw new Error('กรุณาระบุลิงก์หรือ URL รูปภาพผลงาน');
+    }
+
+    const { data: existingSub } = await supabase
+      .from('assignment_submissions')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('lesson_id', params.lessonId)
+      .maybeSingle();
+
+    if (!existingSub) {
+      // First-time submission
+      const { data, error } = await supabase
+        .from('assignment_submissions')
+        .insert({
+          user_id: user.id,
+          student_name: user.user_metadata?.full_name || 'นักเรียน',
+          lesson_id: params.lessonId,
+          classroom_id: params.classroomId || null,
+          submission_type: params.submissionType,
+          content_url: cleanContentUrl || null,
+          notes: cleanNotes || null,
+          status: 'pending',
+          revision_count: 1,
+          submitted_revisions: [],
+          is_in_portfolio: true,
+          submitted_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) return { success: false, error: error.message };
+
+      revalidatePath('/admin/submissions');
+      revalidatePath('/student/portfolio');
+      revalidatePath('/student/history');
+      return { success: true, submission: data, isRevision: false };
+    }
+
+    // Re-submission / Revision
+    const oldRevisions = (existingSub.submitted_revisions as Array<Record<string, unknown>>) || [];
+    const newRevisionHistory = [
+      ...oldRevisions,
+      {
+        revision: existingSub.revision_count || 1,
+        submission_type: existingSub.submission_type,
+        content_url: existingSub.content_url,
+        notes: existingSub.notes,
+        submitted_at: existingSub.submitted_at,
+        previous_feedback: existingSub.teacher_feedback,
+      },
+    ];
+
+    const nextRevisionCount = (existingSub.revision_count || 1) + 1;
+
+    const { data: updated, error: updateError } = await supabase
+      .from('assignment_submissions')
+      .update({
+        submission_type: params.submissionType,
+        content_url: cleanContentUrl || null,
+        notes: cleanNotes || null,
+        status: 'pending', // Set back to pending for teacher re-review
+        revision_count: nextRevisionCount,
+        submitted_revisions: newRevisionHistory as unknown as Json,
+        submitted_at: new Date().toISOString(),
+      })
+      .eq('id', existingSub.id)
+      .select()
+      .single();
+
+    if (updateError) return { success: false, error: updateError.message };
+
+    revalidatePath('/admin/submissions');
+    revalidatePath('/student/portfolio');
+    revalidatePath('/student/history');
+    return { success: true, submission: updated, isRevision: true };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };
   }

@@ -13,7 +13,8 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react';
-import { submitAssignment, getStudentLessonSubmission, type AssignmentSubmissionRow } from '@/services/assignments';
+import { getStudentLessonSubmission, type AssignmentSubmissionRow } from '@/services/assignments';
+import { submitAssignmentAction } from '@/actions/student-learning-actions';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
 
@@ -83,11 +84,9 @@ export function AssignmentSubmissionCard({ lessonId, classroomId, lessonTitle }:
     }
 
     setSubmitting(true);
-    const res = await submitAssignment({
+    const res = await submitAssignmentAction({
       lessonId,
       classroomId,
-      userId: currentUser.id,
-      studentName: currentUser.name,
       submissionType,
       contentUrl: contentUrl.trim() || undefined,
       notes: notes.trim() || undefined,
@@ -95,13 +94,18 @@ export function AssignmentSubmissionCard({ lessonId, classroomId, lessonTitle }:
 
     setSubmitting(false);
 
-    if (!res.success || !res.data) {
+    if (!res.success || !res.submission) {
       toast.error('ส่งงานไม่สำเร็จ', res.error || 'เกิดข้อผิดพลาดในการบันทึกการส่งงาน');
       return;
     }
 
-    setSubmission(res.data);
-    toast.success('ส่งการบ้านเรียบร้อย!', `คุณครูได้รับชิ้นงาน "${lessonTitle}" แล้ว`);
+    setSubmission(res.submission as unknown as AssignmentSubmissionRow);
+    toast.success(
+      res.isRevision ? 'ส่งงานฉบับแก้ไขเรียบร้อย!' : 'ส่งการบ้านเรียบร้อย!',
+      res.isRevision
+        ? `คุณครูได้รับงานฉบับแก้ไขของ "${lessonTitle}" แล้ว`
+        : `คุณครูได้รับชิ้นงาน "${lessonTitle}" แล้ว`
+    );
   };
 
   if (loading) {
@@ -167,14 +171,28 @@ export function AssignmentSubmissionCard({ lessonId, classroomId, lessonTitle }:
         )}
       </div>
 
-      {/* Teacher Feedback Card if Graded */}
+      {/* Teacher Feedback Card (Graded or Needs Revision) */}
       {submission && submission.teacher_feedback && (
-        <div className="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-1.5">
-          <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-xs">
-            <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-            <span>ข้อเสนอแนะจากครูจักรพงษ์:</span>
+        <div
+          className={`p-4 rounded-2xl border space-y-1.5 ${
+            submission.status === 'needs_revision'
+              ? 'bg-amber-50/90 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200'
+              : 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+          }`}
+        >
+          <div className="flex items-center gap-2 font-bold text-xs">
+            {submission.status === 'needs_revision' ? (
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            ) : (
+              <MessageSquare className="w-4 h-4 text-emerald-600 shrink-0" />
+            )}
+            <span>
+              {submission.status === 'needs_revision'
+                ? 'คำแนะนำจากคุณครู (โปรดแก้ไขและส่งใหม่):'
+                : 'ข้อเสนอแนะและคำชมเชยจากคุณครู:'}
+            </span>
           </div>
-          <p className="text-xs text-slate-700 dark:text-slate-200 pl-5 leading-relaxed">
+          <p className="text-xs text-slate-700 dark:text-slate-200 pl-6 leading-relaxed">
             {submission.teacher_feedback}
           </p>
         </div>

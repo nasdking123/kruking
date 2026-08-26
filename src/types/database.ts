@@ -962,6 +962,9 @@ export interface Database {
           max_score: number;
           status: 'pending' | 'passed' | 'graded' | 'needs_revision';
           teacher_feedback: string | null;
+          is_in_portfolio?: boolean;
+          revision_count?: number;
+          submitted_revisions?: Json;
           submitted_at: string;
           graded_at: string | null;
         };
@@ -978,6 +981,9 @@ export interface Database {
           max_score?: number;
           status?: 'pending' | 'passed' | 'graded' | 'needs_revision';
           teacher_feedback?: string | null;
+          is_in_portfolio?: boolean;
+          revision_count?: number;
+          submitted_revisions?: Json;
           submitted_at?: string;
           graded_at?: string | null;
         };
@@ -995,6 +1001,8 @@ export interface Database {
           status?: 'pending' | 'passed' | 'graded' | 'needs_revision';
           teacher_feedback?: string | null;
           is_in_portfolio?: boolean;
+          revision_count?: number;
+          submitted_revisions?: Json;
           submitted_at?: string;
           graded_at?: string | null;
         };
