@@ -102,6 +102,109 @@ export async function getCategories(): Promise<CategoryRow[]> {
   }
 }
 
+export interface CategoryWithCount extends CategoryRow {
+  workCount?: number;
+}
+
+export async function getCategoriesWithWorkCount(): Promise<CategoryWithCount[]> {
+  try {
+    const supabase = createClient();
+    const [catsRes, worksRes] = await Promise.all([
+      supabase.from('categories').select('*').order('sort_order', { ascending: true }),
+      supabase.from('works').select('category_id'),
+    ]);
+
+    const cats = (catsRes.data || []) as CategoryRow[];
+    const works = (worksRes.data || []) as Array<{ category_id: string | null }>;
+
+    const countMap: Record<string, number> = {};
+    works.forEach((w) => {
+      if (w.category_id) {
+        countMap[w.category_id] = (countMap[w.category_id] || 0) + 1;
+      }
+    });
+
+    return cats.map((c) => ({
+      ...c,
+      workCount: countMap[c.id] || 0,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function createCategory(data: {
+  name: string;
+  slug: string;
+  description?: string;
+  icon?: string;
+  module_key?: string;
+  sort_order?: number;
+}): Promise<{ success: boolean; data?: CategoryRow; error?: string }> {
+  try {
+    const supabase = createClient();
+    const { data: created, error } = await supabase
+      .from('categories')
+      .insert({
+        name: data.name.trim(),
+        slug: data.slug.trim(),
+        description: data.description?.trim() || null,
+        icon: data.icon || 'FolderOpen',
+        module_key: data.module_key || 'resources',
+        sort_order: data.sort_order || 1,
+      })
+      .select()
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, data: created as CategoryRow };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+export async function updateCategory(
+  id: string,
+  data: {
+    name: string;
+    slug: string;
+    description?: string;
+    icon?: string;
+    sort_order?: number;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('categories')
+      .update({
+        name: data.name.trim(),
+        slug: data.slug.trim(),
+        description: data.description?.trim() || null,
+        icon: data.icon || 'FolderOpen',
+        sort_order: data.sort_order || 1,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id);
+
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+export async function deleteCategory(id: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = createClient();
+    const { error } = await supabase.from('categories').delete().eq('id', id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
 export async function getTags(): Promise<TagRow[]> {
   try {
     const supabase = createClient();
