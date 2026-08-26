@@ -38,6 +38,9 @@ export default function CreateQuizPage() {
   const [subject, setSubject] = useState('วิทยาการคำนวณ');
   const [timeLimit, setTimeLimit] = useState(10);
   const [attemptLimit, setAttemptLimit] = useState(3);
+  const [accessCode, setAccessCode] = useState('');
+  const [passingScore, setPassingScore] = useState(60);
+  const [pointsReward, setPointsReward] = useState(20);
   const [loading, setLoading] = useState(false);
 
   const [questions, setQuestions] = useState<QuestionDraft[]>([
@@ -141,6 +144,7 @@ export default function CreateQuizPage() {
       const supabase = createClient();
 
       // 1. Insert Quiz
+      const cleanAccessCode = accessCode.trim();
       const newQuiz = {
         title,
         slug: slug || `quiz-${Date.now()}`,
@@ -149,6 +153,10 @@ export default function CreateQuizPage() {
         subject,
         time_limit: timeLimit,
         attempt_limit: attemptLimit,
+        access_code: cleanAccessCode || null,
+        is_passcode_required: Boolean(cleanAccessCode),
+        passing_score: Number(passingScore) || 60,
+        points_reward: Number(pointsReward) || 20,
         shuffle_questions: true,
         shuffle_choices: true,
         published: true,
@@ -326,6 +334,47 @@ export default function CreateQuizPage() {
                 value={attemptLimit}
                 onChange={(e) => setAttemptLimit(Number(e.target.value))}
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-amber-700 dark:text-amber-400 block mb-1">
+                🔐 รหัสผ่านเข้าห้องสอบ (Access Code - ปล่อยว่างถ้าไม่บังคับ)
+              </label>
+              <input
+                type="text"
+                value={accessCode}
+                onChange={(e) => setAccessCode(e.target.value)}
+                placeholder="เช่น 1234 หรือ BCL2026"
+                className="w-full px-4 py-2.5 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/20 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                🎯 เกณฑ์คะแนนสอบผ่าน (%)
+              </label>
+              <input
+                type="number"
+                min={10}
+                max={100}
+                value={passingScore}
+                onChange={(e) => setPassingScore(Number(e.target.value))}
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-purple-700 dark:text-purple-400 block mb-1">
+                🏆 แต้มโบนัสเมื่อสอบผ่าน (Points XP)
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={500}
+                value={pointsReward}
+                onChange={(e) => setPointsReward(Number(e.target.value))}
+                className="w-full px-4 py-2.5 rounded-xl border border-purple-200 dark:border-purple-900/60 bg-purple-50/50 dark:bg-purple-950/20 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
           </div>

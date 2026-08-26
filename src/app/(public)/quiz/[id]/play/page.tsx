@@ -34,6 +34,11 @@ export default function QuizRunnerPage() {
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Passcode Gate State
+  const [passcodeVerified, setPasscodeVerified] = useState(false);
+  const [inputPasscode, setInputPasscode] = useState('');
+  const [passcodeError, setPasscodeError] = useState('');
+
   useEffect(() => {
     let ignore = false;
 
@@ -55,6 +60,10 @@ export default function QuizRunnerPage() {
       if (!ignore && data) {
         setQuiz(data);
         setTimeLeft(data.time_limit * 60);
+        // If no passcode is set, auto-verify
+        if (!data.access_code && !data.is_passcode_required) {
+          setPasscodeVerified(true);
+        }
       }
     }
 
@@ -64,6 +73,23 @@ export default function QuizRunnerPage() {
       ignore = true;
     };
   }, [quizId]);
+
+  const handleVerifyPasscode = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quiz) return;
+
+    const expected = (quiz.access_code || '').trim().toLowerCase();
+    const actual = inputPasscode.trim().toLowerCase();
+
+    if (actual === expected || !expected) {
+      setPasscodeVerified(true);
+      setPasscodeError('');
+      toast.success('รหัสผ่านถูกต้อง!', 'เริ่มทำแบบทดสอบได้เลยครับ');
+    } else {
+      setPasscodeError('รหัสผ่านเข้าห้องสอบไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+      toast.error('รหัสผ่านไม่ถูกต้อง', 'กรุณาตรวจสอบรหัสจากคุณครูผู้สอน');
+    }
+  };
 
   const handleSubmit = useCallback(async () => {
     if (!quiz || !quiz.questions || isSubmitting) return;
@@ -102,21 +128,24 @@ export default function QuizRunnerPage() {
       sessionStorage.setItem(
         `quiz_result_${quiz.id}`,
         JSON.stringify({
+          quizId: quiz.id,
           score: calculatedScore,
           totalPoints,
           timeSpent: timeSpent > 0 ? timeSpent : 1,
-          answers: selectedAnswers,
+          selectedAnswers,
+          completedAt: new Date().toISOString(),
         })
       );
     }
 
-    toast.success('ส่งคำตอบสำเร็จ!', 'ระบบบันทึกคะแนนลงสมุดรายงานผลการเรียนเรียบร้อย');
+    setIsSubmitting(false);
+    toast.success('ส่งแบบทดสอบเรียบร้อยแล้ว');
     router.push(`/quiz/${quiz.id}/result`);
   }, [quiz, isSubmitting, currentUser, selectedAnswers, timeLeft, quizId, router, toast]);
 
-  // Timer Tick
+  // Timer countdown hook (Only starts after passcode is verified!)
   useEffect(() => {
-    if (!quiz || timeLeft <= 0 || !currentUser) return;
+    if (!quiz || !currentUser || !passcodeVerified) return;
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
@@ -130,7 +159,7 @@ export default function QuizRunnerPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [quiz, timeLeft, currentUser, handleSubmit]);
+  }, [quiz, currentUser, passcodeVerified, handleSubmit]);
 
   if (authChecking) {
     return (
@@ -139,6 +168,60 @@ export default function QuizRunnerPage() {
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
           <span className="text-xs text-slate-500 font-bold">กำลังตรวจสอบสิทธิ์การเข้าทำแบบทดสอบ...</span>
         </div>
+      </div>
+    );
+  }
+
+  // Passcode Required Entry Gate Screen
+  if (quiz && (quiz.access_code || quiz.is_passcode_required) && !passcodeVerified) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-16 text-center space-y-6 animate-in fade-in">
+        <div className="w-16 h-16 rounded-3xl bg-blue-100 dark:bg-blue-950 text-blue-600 flex items-center justify-center mx-auto shadow-md">
+          <Lock className="w-8 h-8" />
+        </div>
+
+        <div className="space-y-2">
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white">
+            รหัสผ่านเข้าห้องสอบ (Access Code)
+          </h2>
+          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+            แบบทดสอบ <strong className="text-slate-900 dark:text-white">&ldquo;{quiz.title}&rdquo;</strong> ถูกตั้งรหัสผ่านป้องกันไว้ โปรดกรอกรหัสผ่านจากคุณครูผู้คุมสอบเพื่อเริ่มทำข้อสอบ
+          </p>
+        </div>
+
+        <form onSubmit={handleVerifyPasscode} className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl space-y-4">
+          <div>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5 text-left">
+              รหัสเข้าสอบ (Passcode) *
+            </label>
+            <input
+              type="text"
+              required
+              autoFocus
+              value={inputPasscode}
+              onChange={(e) => {
+                setInputPasscode(e.target.value);
+                setPasscodeError('');
+              }}
+              placeholder="กรอกรหัสผ่าน เช่น 1234 หรือ BCL2026"
+              className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-center font-mono font-bold tracking-widest text-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            />
+          </div>
+
+          {passcodeError && (
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-rose-600 text-xs font-semibold text-left flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>{passcodeError}</span>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="w-full py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <span>ยืนยันรหัสเข้าห้องสอบ →</span>
+          </button>
+        </form>
       </div>
     );
   }
