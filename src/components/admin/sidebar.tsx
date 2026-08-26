@@ -59,10 +59,13 @@ const adminNavGroups: NavGroup[] = [
     ],
   },
   {
-    label: 'การเรียนรู้ & เครื่องมือ AI',
+    label: 'ระบบการเรียนรู้และผลงานนักเรียน',
     items: [
-      { title: 'ห้องเรียนออนไลน์ (Classroom)', href: '/admin/classroom', icon: School, badge: 'ใหม่' },
-      { title: 'ข้อมูลนักเรียน & คะแนนสอบ (Students)', href: '/admin/students', icon: GraduationCap, badge: 'ใหม่' },
+      { title: 'ห้องเรียนออนไลน์ (Classroom)', href: '/admin/classroom', icon: School, badge: 'MOOC' },
+      { title: 'ข้อมูลนักเรียน & คะแนน (Students)', href: '/admin/students', icon: GraduationCap },
+      { title: 'ตรวจการบ้าน & ผลงาน (Submissions)', href: '/admin/submissions', icon: CheckSquare, badge: 'งานส่ง' },
+      { title: 'อนุมัติเกียรติบัตร (Certificates)', href: '/admin/certificates', icon: Trophy, badge: 'อนุมัติ' },
+      { title: 'จัดการการแข่งขัน (Competitions)', href: '/admin/competitions', icon: Trophy },
       { title: 'จัดการแบบทดสอบ (Quizzes)', href: '/admin/quizzes', icon: CheckSquare },
       { title: 'ศูนย์ดาวน์โหลด (Downloads)', href: '/downloads', icon: Download },
       { title: 'ผู้ช่วย AI สำหรับครู (AI Tools)', href: '/ai', icon: Bot, badge: 'AI' },

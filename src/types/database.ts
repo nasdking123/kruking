@@ -45,6 +45,11 @@ export interface Database {
           phone: string | null;
           social_links: Json;
           is_active: boolean;
+          grade_level?: string | null;
+          classroom?: string | null;
+          student_number?: string | null;
+          school_name?: string | null;
+          nickname?: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -60,6 +65,11 @@ export interface Database {
           phone?: string | null;
           social_links?: Json;
           is_active?: boolean;
+          grade_level?: string | null;
+          classroom?: string | null;
+          student_number?: string | null;
+          school_name?: string | null;
+          nickname?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -75,6 +85,11 @@ export interface Database {
           phone?: string | null;
           social_links?: Json;
           is_active?: boolean;
+          grade_level?: string | null;
+          classroom?: string | null;
+          student_number?: string | null;
+          school_name?: string | null;
+          nickname?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -909,6 +924,7 @@ export interface Database {
           entity_type: string;
           entity_id: string;
           user_id: string | null;
+          action?: string | null;
           created_at: string;
         };
         Insert: {
@@ -916,6 +932,7 @@ export interface Database {
           entity_type: string;
           entity_id: string;
           user_id?: string | null;
+          action?: string | null;
           created_at?: string;
         };
         Update: {
@@ -923,6 +940,7 @@ export interface Database {
           entity_type?: string;
           entity_id?: string;
           user_id?: string | null;
+          action?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -939,7 +957,7 @@ export interface Database {
           notes: string | null;
           score: number | null;
           max_score: number;
-          status: 'pending' | 'graded' | 'needs_revision';
+          status: 'pending' | 'passed' | 'graded' | 'needs_revision';
           teacher_feedback: string | null;
           submitted_at: string;
           graded_at: string | null;
@@ -955,7 +973,7 @@ export interface Database {
           notes?: string | null;
           score?: number | null;
           max_score?: number;
-          status?: 'pending' | 'graded' | 'needs_revision';
+          status?: 'pending' | 'passed' | 'graded' | 'needs_revision';
           teacher_feedback?: string | null;
           submitted_at?: string;
           graded_at?: string | null;
@@ -971,10 +989,311 @@ export interface Database {
           notes?: string | null;
           score?: number | null;
           max_score?: number;
-          status?: 'pending' | 'graded' | 'needs_revision';
+          status?: 'pending' | 'passed' | 'graded' | 'needs_revision';
           teacher_feedback?: string | null;
+          is_in_portfolio?: boolean;
           submitted_at?: string;
           graded_at?: string | null;
+        };
+        Relationships: [];
+      };
+      schools: {
+        Row: {
+          id: string;
+          name: string;
+          code: string | null;
+          logo_url: string | null;
+          province: string | null;
+          status: 'active' | 'inactive';
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          code?: string | null;
+          logo_url?: string | null;
+          province?: string | null;
+          status?: 'active' | 'inactive';
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          code?: string | null;
+          logo_url?: string | null;
+          province?: string | null;
+          status?: 'active' | 'inactive';
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      student_groups: {
+        Row: {
+          id: string;
+          name: string;
+          school_id: string | null;
+          description: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          school_id?: string | null;
+          description?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          school_id?: string | null;
+          description?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      assignments: {
+        Row: {
+          id: string;
+          lesson_id: string | null;
+          classroom_id: string | null;
+          title: string;
+          instructions: string;
+          max_score: number;
+          due_date: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          lesson_id?: string | null;
+          classroom_id?: string | null;
+          title: string;
+          instructions: string;
+          max_score?: number;
+          due_date?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          lesson_id?: string | null;
+          classroom_id?: string | null;
+          title?: string;
+          instructions?: string;
+          max_score?: number;
+          due_date?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      student_certificates: {
+        Row: {
+          id: string;
+          user_id: string;
+          student_name: string;
+          title: string;
+          issuer: string;
+          issue_date: string;
+          image_url: string | null;
+          competition_level: string | null;
+          award_tier: string | null;
+          status: 'pending' | 'approved' | 'rejected';
+          reject_reason: string | null;
+          approved_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          student_name: string;
+          title: string;
+          issuer?: string;
+          issue_date?: string;
+          image_url?: string | null;
+          competition_level?: string | null;
+          award_tier?: string | null;
+          status?: 'pending' | 'approved' | 'rejected';
+          reject_reason?: string | null;
+          approved_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          student_name?: string;
+          title?: string;
+          issuer?: string;
+          issue_date?: string;
+          image_url?: string | null;
+          competition_level?: string | null;
+          award_tier?: string | null;
+          status?: 'pending' | 'approved' | 'rejected';
+          reject_reason?: string | null;
+          approved_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      point_transactions: {
+        Row: {
+          id: string;
+          user_id: string;
+          amount: number;
+          point_type: 'learning' | 'bonus' | 'assignment' | 'quiz' | 'competition' | 'award' | 'adjustment';
+          source_id: string | null;
+          description: string;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          amount: number;
+          point_type?: 'learning' | 'bonus' | 'assignment' | 'quiz' | 'competition' | 'award' | 'adjustment';
+          source_id?: string | null;
+          description: string;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          amount?: number;
+          point_type?: 'learning' | 'bonus' | 'assignment' | 'quiz' | 'competition' | 'award' | 'adjustment';
+          source_id?: string | null;
+          description?: string;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      student_awards: {
+        Row: {
+          id: string;
+          user_id: string;
+          student_name: string;
+          award_name: string;
+          award_type: 'winner' | 'runner_up' | 'outstanding' | 'top_score' | 'consistent' | 'gold' | 'silver' | 'bronze';
+          description: string | null;
+          badge_icon: string | null;
+          issue_date: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          student_name: string;
+          award_name: string;
+          award_type?: 'winner' | 'runner_up' | 'outstanding' | 'top_score' | 'consistent' | 'gold' | 'silver' | 'bronze';
+          description?: string | null;
+          badge_icon?: string | null;
+          issue_date?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          student_name?: string;
+          award_name?: string;
+          award_type?: 'winner' | 'runner_up' | 'outstanding' | 'top_score' | 'consistent' | 'gold' | 'silver' | 'bronze';
+          description?: string | null;
+          badge_icon?: string | null;
+          issue_date?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      competitions: {
+        Row: {
+          id: string;
+          title: string;
+          description: string | null;
+          subject: string;
+          grade_level: string | null;
+          school_id: string | null;
+          points_reward: number;
+          status: 'draft' | 'active' | 'completed';
+          start_date: string | null;
+          end_date: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          description?: string | null;
+          subject?: string;
+          grade_level?: string | null;
+          school_id?: string | null;
+          points_reward?: number;
+          status?: 'draft' | 'active' | 'completed';
+          start_date?: string | null;
+          end_date?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          description?: string | null;
+          subject?: string;
+          grade_level?: string | null;
+          school_id?: string | null;
+          points_reward?: number;
+          status?: 'draft' | 'active' | 'completed';
+          start_date?: string | null;
+          end_date?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      competition_results: {
+        Row: {
+          id: string;
+          competition_id: string;
+          user_id: string;
+          rank: number;
+          score: number;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          competition_id: string;
+          user_id: string;
+          rank?: number;
+          score?: number;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          competition_id?: string;
+          user_id?: string;
+          rank?: number;
+          score?: number;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      module_settings: {
+        Row: {
+          id: string;
+          key: string;
+          value: Json;
+          description: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          key: string;
+          value: Json;
+          description?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          key?: string;
+          value?: Json;
+          description?: string | null;
+          updated_at?: string;
         };
         Relationships: [];
       };

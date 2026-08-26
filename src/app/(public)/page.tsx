@@ -411,6 +411,76 @@ export default async function HomePage() {
           )}
         </section>
       )}
+
+      {/* 7. OUTSTANDING STUDENTS SHOWCASE (ผู้เรียนดีเด่น) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-tr from-amber-500/10 via-slate-50 to-blue-50/20 dark:from-amber-950/20 dark:via-slate-900 dark:to-blue-950/20 border border-amber-200/60 dark:border-amber-900/40 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500 text-slate-950 text-xs font-black mb-2 shadow-xs">
+                <Trophy className="w-3.5 h-3.5" />
+                <span>เกียรติยศนักเรียน (Student Hall of Fame)</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+                🏆 ผู้เรียนดีเด่นและนักเรียนยอดเยี่ยม
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                นักเรียนที่มีผลการเรียนรู้ ส่งผลงานสม่ำเสมอ และมีคะแนนสะสมสูงสุดประจำภาคเรียน
+              </p>
+            </div>
+
+            <Link
+              href="/student/ranking"
+              className="px-5 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 transition-all flex items-center gap-1.5 shrink-0 self-start sm:self-auto"
+            >
+              <span>ดูกระดานจัดอันดับเต็ม (Leaderboard)</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              { rank: 1, name: 'ด.ช. ธนกฤต มั่งคั่ง', grade: 'ประถมศึกษาปีที่ 6', school: 'โรงเรียนวัดบางโฉลงใน', badge: '⭐ ผู้เรียนดีเด่น', seed: 'King1' },
+              { rank: 2, name: 'ด.ญ. กานต์พิชชา รัตนคุณ', grade: 'ประถมศึกษาปีที่ 6', school: 'โรงเรียนวัดบางโฉลงใน', badge: '🎯 คะแนนสอบสูงสุด', seed: 'Student2' },
+              { rank: 3, name: 'ด.ช. ภัทรพล เจริญสุข', grade: 'ประถมศึกษาปีที่ 6', school: 'โรงเรียนวัดบางโฉลงใน', badge: '🏆 นักพัฒนา Scratch', seed: 'Student3' },
+            ].map((s) => (
+              <div
+                key={s.rank}
+                className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex items-center gap-4 hover:border-amber-400 transition-all"
+              >
+                <div className="relative w-12 h-12 rounded-2xl overflow-hidden bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 shrink-0">
+                  <Image
+                    src={`https://api.dicebear.com/7.x/bottts/svg?seed=${s.seed}`}
+                    alt={s.name}
+                    fill
+                    unoptimized
+                    className="object-cover"
+                  />
+                </div>
+
+                <div className="min-w-0 space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.2 rounded font-extrabold text-[10px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
+                      อันดับ #{s.rank}
+                    </span>
+                    <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400 truncate">
+                      {s.badge}
+                    </span>
+                  </div>
+
+                  <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white truncate">
+                    {s.name}
+                  </h3>
+
+                  <p className="text-[10px] text-slate-400 truncate">
+                    {s.grade} • {s.school}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
