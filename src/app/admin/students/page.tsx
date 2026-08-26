@@ -10,9 +10,13 @@ import {
   User, 
   Eye, 
   Loader2,
-  Filter
+  Filter,
+  Download,
+  FileText
 } from 'lucide-react';
 import { getAllStudentsAnalytics, type StudentAnalyticsItem, type StudentEnrollment, type StudentQuizAttempt } from '@/services/student';
+import { exportStudentsToExcel } from '@/services/export-excel';
+import { AssignmentGradingModal } from '@/components/admin/assignment-grading-modal';
 
 export default function AdminStudentsAnalyticsPage() {
   const [students, setStudents] = useState<StudentAnalyticsItem[]>([]);
@@ -20,6 +24,7 @@ export default function AdminStudentsAnalyticsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [gradeFilter, setGradeFilter] = useState('ALL');
   const [selectedStudent, setSelectedStudent] = useState<StudentAnalyticsItem | null>(null);
+  const [showGradingModal, setShowGradingModal] = useState(false);
 
   useEffect(() => {
     let ignore = false;
@@ -45,10 +50,14 @@ export default function AdminStudentsAnalyticsPage() {
     return matchesSearch && matchesGrade;
   });
 
+  const handleExport = () => {
+    exportStudentsToExcel(filteredStudents, 'kruking_gradebook_p6_p3');
+  };
+
   return (
     <div className="p-6 sm:p-10 max-w-7xl mx-auto space-y-8">
-      {/* 1. Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* 1. Header & Actions */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2.5">
             <GraduationCap className="w-7 h-7 text-blue-600" />
@@ -57,6 +66,26 @@ export default function AdminStudentsAnalyticsPage() {
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
             ดูรายชื่อนักเรียนที่สมัครเข้าใช้งาน, ห้องเรียนที่สมัครเข้าเรียน, Log การดูคลิป และตารางคะแนนสอบรายบุคคล
           </p>
+        </div>
+
+        <div className="flex items-center gap-2.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowGradingModal(true)}
+            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer"
+          >
+            <FileText className="w-4 h-4" />
+            <span>ตรวจการบ้านนักเรียน</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExport}
+            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-500/20 flex items-center gap-1.5 cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+            <span>ส่งออก Excel (.csv)</span>
+          </button>
         </div>
       </div>
 
@@ -119,7 +148,7 @@ export default function AdminStudentsAnalyticsPage() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="ค้นหาชื่อนักเรียน, อีเมล, โรงเรียน..."
+            placeholder="ค้นหาชื่อนักเรียน, Username, โรงเรียน..."
             className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
         </div>
@@ -247,7 +276,7 @@ export default function AdminStudentsAnalyticsPage() {
               <button
                 type="button"
                 onClick={() => setSelectedStudent(null)}
-                className="text-xs font-bold text-slate-400 hover:text-slate-600 p-1"
+                className="text-xs font-bold text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
               >
                 ปิดหน้าต่าง
               </button>
@@ -324,6 +353,12 @@ export default function AdminStudentsAnalyticsPage() {
           </div>
         </div>
       )}
+
+      {/* 6. Teacher Assignment Grading Modal */}
+      <AssignmentGradingModal
+        isOpen={showGradingModal}
+        onClose={() => setShowGradingModal(false)}
+      />
     </div>
   );
 }

@@ -13,14 +13,16 @@ import {
   CheckSquare, 
   FileText, 
   ChevronRight,
-  PlayCircle
+  Award
 } from 'lucide-react';
 import { YouTubePlayer } from '@/components/common/youtube-player';
 import type { ClassroomWithLessons, LessonRow } from '@/services/classroom';
 import { useToast } from '@/components/ui/toast';
-
 import { createClient } from '@/lib/supabase/client';
 import { logLessonActivity } from '@/services/student';
+import { AssignmentSubmissionCard } from './assignment-submission-card';
+import { CertificateModal } from './certificate-modal';
+import { generateCertificateCode, getThaiCertificateDate, type CertificateData } from '@/services/certificate';
 
 interface Props {
   classroom: ClassroomWithLessons;
@@ -35,6 +37,8 @@ function subscribeToStorage(callback: () => void) {
 export function LessonInteractiveViewer({ classroom, lesson }: Props) {
   const toast = useToast();
   const [showSelfCheck, setShowSelfCheck] = useState(false);
+  const [showCertModal, setShowCertModal] = useState(false);
+  const [studentInfo, setStudentInfo] = useState<{ name: string; grade?: string; school?: string } | null>(null);
 
   const storageKey = `kruking_lesson_completed_${lesson.id}`;
 
@@ -56,178 +60,152 @@ export function LessonInteractiveViewer({ classroom, lesson }: Props) {
           lessonId: lesson.id,
           action: 'view',
         });
+        setStudentInfo({
+          name: user.user_metadata?.full_name || 'นักเรียนยอดเยี่ยม',
+          grade: classroom.grade_level || 'ประถมศึกษาปีที่ 6',
+          school: 'โรงเรียนวัดบางโฉลงใน',
+        });
       }
     });
-  }, [lesson.id]);
+  }, [lesson.id, classroom.grade_level]);
 
-  const toggleCompleted = () => {
+  const handleToggleComplete = async () => {
     const nextState = !isCompleted;
     if (typeof window !== 'undefined') {
       localStorage.setItem(storageKey, String(nextState));
       window.dispatchEvent(new Event('storage'));
     }
 
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    if (nextState) {
+      toast.success('บันทึกความก้าวหน้าสำเร็จ!', `คุณได้เรียนจบ "${lesson.title}" แล้ว`);
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         logLessonActivity({
           userId: user.id,
           lessonId: lesson.id,
-          action: nextState ? 'complete' : 'view',
+          action: 'complete',
         });
       }
-    });
-
-    if (nextState) {
-      toast.success('🎉 ยินดีด้วย!', `คุณได้เรียนจบบทเรียน "${lesson.title}" เรียบร้อยแล้ว`);
-    } else {
-      toast.info('อัปเดตสถานะ', 'เปลี่ยนสถานะเป็นยังไม่จบ');
     }
   };
 
   const allLessons = classroom.lessons || [];
   const currentIndex = allLessons.findIndex((l) => l.id === lesson.id);
   const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
-  const nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
+  const nextLesson = currentIndex >= 0 && currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
+
+  const certData: CertificateData = {
+    certificateNo: generateCertificateCode('KCL-COURSE'),
+    studentName: studentInfo?.name || 'นักเรียนยอดเยี่ยม',
+    gradeLevel: classroom.grade_level || 'ประถมศึกษาปีที่ 6',
+    schoolName: 'โรงเรียนวัดบางโฉลงใน',
+    title: `ผ่านการศึกษาและเรียนรู้ครบตามหลักสูตร "${classroom.title}"`,
+    issueDate: getThaiCertificateDate(),
+    teacherName: 'ครูจักรพงษ์ สำรองพันธ์',
+    teacherTitle: 'ครูผู้สอนกลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี',
+  };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-in fade-in">
+      {/* 1. Breadcrumb */}
+      <nav className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
         <Link href="/" className="hover:text-blue-600 transition-colors">หน้าแรก</Link>
         <ChevronRight className="w-3.5 h-3.5" />
         <Link href="/classroom" className="hover:text-blue-600 transition-colors">ห้องเรียนออนไลน์</Link>
         <ChevronRight className="w-3.5 h-3.5" />
-        <Link href={`/classroom/${classroom.slug}`} className="hover:text-blue-600 transition-colors truncate max-w-xs">{classroom.title}</Link>
+        <Link href={`/classroom/${classroom.slug}`} className="hover:text-blue-600 transition-colors truncate max-w-[150px]">
+          {classroom.title}
+        </Link>
         <ChevronRight className="w-3.5 h-3.5" />
-        <span className="text-slate-900 dark:text-white font-semibold truncate max-w-xs">{lesson.title}</span>
+        <span className="text-slate-900 dark:text-white font-bold truncate max-w-[200px]">
+          {lesson.title}
+        </span>
       </nav>
 
-      {/* Lesson Header with Completion Banner */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="px-3 py-1 rounded-xl bg-blue-600 text-white font-bold text-xs shadow-xs">
-              บทที่ {lesson.sort_order || currentIndex + 1}
-            </span>
-            <span className="px-3 py-1 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-semibold text-xs flex items-center gap-1">
-              <School className="w-3.5 h-3.5" />
-              <span>{classroom.subject}</span>
-            </span>
-            {classroom.grade_level && (
-              <span className="px-3 py-1 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs">
-                {classroom.grade_level}
-              </span>
-            )}
+      {/* 2. Header & Action Row */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+        <div>
+          <div className="flex items-center gap-2 text-blue-600 font-bold text-xs mb-1">
+            <School className="w-4 h-4" />
+            <span>{classroom.title} ({classroom.grade_level || 'ประถมศึกษา'})</span>
           </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            {lesson.title}
+          </h1>
+        </div>
 
-          {/* Completion Toggle Button */}
+        {/* Completion & Certificate Buttons */}
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={toggleCompleted}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs ${
+            onClick={handleToggleComplete}
+            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs ${
               isCompleted
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                : 'bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700'
+                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 border border-emerald-200 dark:border-emerald-800'
+                : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800'
             }`}
           >
             {isCompleted ? (
               <>
-                <CheckCircle2 className="w-4 h-4 text-white animate-in zoom-in" />
-                <span>เรียนจบแล้ว (Completed)</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>เรียนจบแล้ว ✅</span>
               </>
             ) : (
               <>
-                <Circle className="w-4 h-4 text-slate-400" />
+                <Circle className="w-4 h-4" />
                 <span>ทำเครื่องหมายว่าเรียนจบ</span>
               </>
             )}
           </button>
+
+          <button
+            type="button"
+            onClick={() => setShowCertModal(true)}
+            className="px-3.5 py-2 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-md shadow-amber-500/20 flex items-center gap-1.5 cursor-pointer"
+          >
+            <Award className="w-4 h-4" />
+            <span>รับเกียรติบัตร</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3. Responsive YouTube Player */}
+      <div className="overflow-hidden rounded-3xl bg-slate-900 shadow-2xl border border-slate-200/80 dark:border-slate-800/80">
+        <YouTubePlayer
+          url={lesson.video_url || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'}
+          title={lesson.title}
+        />
+      </div>
+
+      {/* 4. Lesson Description & Content */}
+      <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-4">
+        <div className="flex items-center gap-2 text-slate-900 dark:text-white font-extrabold text-sm border-b border-slate-100 dark:border-slate-800 pb-3">
+          <BookOpen className="w-4 h-4 text-blue-600" />
+          <span>เนื้อหาและสาระสำคัญของบทเรียน (Active Learning Notes)</span>
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white leading-tight">
-          {lesson.title}
-        </h1>
-
         {lesson.description && (
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
+          <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm leading-relaxed">
             {lesson.description}
           </p>
         )}
+
+        {lesson.content && (
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-xs sm:text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed font-sans">
+            {lesson.content}
+          </div>
+        )}
       </div>
 
-      {/* Embedded YouTube Video Player */}
-      {lesson.video_url && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-              <PlayCircle className="w-4 h-4 text-rose-600" />
-              <span>วิดีโอคลิปการสอนจาก YouTube</span>
-            </span>
-          </div>
-          <YouTubePlayer
-            url={lesson.video_url}
-            title={lesson.title}
-          />
-        </div>
-      )}
+      {/* 5. Assignment Submission Card (ส่งการบ้าน) */}
+      <AssignmentSubmissionCard 
+        lessonId={lesson.id} 
+        classroomId={classroom.id} 
+        lessonTitle={lesson.title} 
+      />
 
-      {/* Lesson Content Notes */}
-      {lesson.content && (
-        <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-blue-600" />
-              <span>สรุปเนื้อหาและสาระสำคัญของบทเรียน (Learning Notes)</span>
-            </h2>
-          </div>
-
-          <article className="prose prose-slate dark:prose-invert max-w-none text-sm sm:text-base leading-relaxed space-y-4">
-            {lesson.content.split('\n\n').map((para: string, idx: number) => {
-              if (para.startsWith('## ')) {
-                return (
-                  <h2 key={idx} className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white mt-6 mb-3 pb-1 border-b border-slate-200 dark:border-slate-800">
-                    {para.replace('## ', '')}
-                  </h2>
-                );
-              }
-              if (para.startsWith('### ')) {
-                return (
-                  <h3 key={idx} className="text-base font-bold text-blue-700 dark:text-blue-400 mt-4 mb-2">
-                    {para.replace('### ', '')}
-                  </h3>
-                );
-              }
-              if (para.startsWith('> ')) {
-                return (
-                  <div key={idx} className="p-4 rounded-2xl bg-blue-50/80 dark:bg-blue-950/40 border-l-4 border-blue-600 text-slate-800 dark:text-slate-200 text-xs sm:text-sm font-medium my-4">
-                    {para.replace('> ', '')}
-                  </div>
-                );
-              }
-              if (para.startsWith('- ')) {
-                return (
-                  <ul key={idx} className="space-y-2 my-2">
-                    {para.split('\n').map((li: string, lIdx: number) => (
-                      <li key={lIdx} className="flex items-start gap-2 text-slate-700 dark:text-slate-300 text-xs sm:text-sm">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-2 shrink-0" />
-                        <span>{li.replace(/^- /, '')}</span>
-                      </li>
-                    ))}
-                  </ul>
-                );
-              }
-              return (
-                <p key={idx} className="text-slate-700 dark:text-slate-300 text-xs sm:text-sm leading-relaxed">
-                  {para}
-                </p>
-              );
-            })}
-          </article>
-        </div>
-      )}
-
-      {/* Self-Check Question Box */}
+      {/* 6. Self-Check Question Box */}
       <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-tr from-indigo-950 via-slate-900 to-blue-950 text-white shadow-xl space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
@@ -261,7 +239,7 @@ export function LessonInteractiveViewer({ classroom, lesson }: Props) {
         )}
       </div>
 
-      {/* Extra Learning Links */}
+      {/* 7. Extra Learning Links */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link
           href="/quiz"
@@ -300,7 +278,7 @@ export function LessonInteractiveViewer({ classroom, lesson }: Props) {
         </Link>
       </div>
 
-      {/* Next / Previous Navigation Bar */}
+      {/* 8. Next / Previous Navigation Bar */}
       <div className="flex items-center justify-between gap-4 pt-6 border-t border-slate-200 dark:border-slate-800">
         {prevLesson ? (
           <Link
@@ -330,6 +308,13 @@ export function LessonInteractiveViewer({ classroom, lesson }: Props) {
           </Link>
         )}
       </div>
+
+      {/* E-Certificate Modal */}
+      <CertificateModal
+        isOpen={showCertModal}
+        onClose={() => setShowCertModal(false)}
+        data={certData}
+      />
     </div>
   );
 }

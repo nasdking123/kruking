@@ -10,11 +10,14 @@ import {
   RotateCcw, 
   ArrowLeft, 
   Clock, 
-  Award,
+  Award, 
   Sparkles
 } from 'lucide-react';
 import { getQuizById, type QuizWithQuestions } from '@/services/quiz';
 import { Badge } from '@/components/ui/badge';
+import { CertificateModal } from '@/components/public/certificate-modal';
+import { generateCertificateCode, getThaiCertificateDate, type CertificateData } from '@/services/certificate';
+import { createClient } from '@/lib/supabase/client';
 
 interface LocalQuizResult {
   score: number;
@@ -28,6 +31,9 @@ export default function QuizResultPage() {
   const quizId = params.id as string;
 
   const [quiz, setQuiz] = useState<QuizWithQuestions | null>(null);
+  const [showCertModal, setShowCertModal] = useState(false);
+  const [studentName, setStudentName] = useState('นักเรียนยอดเยี่ยม');
+
   const [result] = useState<LocalQuizResult | null>(() => {
     if (typeof window !== 'undefined') {
       const stored = sessionStorage.getItem(`quiz_result_${quizId}`);
@@ -49,6 +55,13 @@ export default function QuizResultPage() {
       if (!ignore) setQuiz(data);
     });
 
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.user_metadata?.full_name) {
+        setStudentName(user.user_metadata.full_name);
+      }
+    });
+
     return () => {
       ignore = true;
     };
@@ -58,27 +71,45 @@ export default function QuizResultPage() {
     return (
       <div className="max-w-xl mx-auto px-4 py-20 text-center space-y-4">
         <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">
-          กำลังโหลดผลการทดสอบ...
+          ไม่พบข้อมูลผลการทดสอบ
         </h2>
+        <p className="text-xs text-slate-500">
+          กรุณาทำแบบทดสอบให้เสร็จสมบูรณ์ก่อนดูหน้านี้
+        </p>
         <Link
-          href={`/quiz/${quizId}`}
-          className="inline-flex items-center gap-1.5 text-xs text-blue-600 font-bold hover:underline"
+          href={`/quiz/${quizId}/play`}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>กลับไปหน้าแบบทดสอบ</span>
+          <span>เริ่มทำแบบทดสอบ</span>
         </Link>
       </div>
     );
   }
 
-  const percentage = Math.round((result.score / result.totalPoints) * 100);
+  const percentage = result.totalPoints > 0 ? Math.round((result.score / result.totalPoints) * 100) : 0;
   const isPassed = percentage >= 60;
+  const isHonor = percentage >= 80;
   const questions = quiz.questions || [];
 
   const formatTimer = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins} นาที ${secs} วินาที`;
+  };
+
+  const certData: CertificateData = {
+    certificateNo: generateCertificateCode('KCL-QUIZ'),
+    studentName,
+    gradeLevel: quiz.grade_level || 'ประถมศึกษาปีที่ 6',
+    schoolName: 'โรงเรียนวัดบางโฉลงใน',
+    title: `ผ่านการทดสอบวัดผลสัมฤทธิ์ทางการเรียน "${quiz.title}"`,
+    score: result.score,
+    totalScore: result.totalPoints,
+    percentage,
+    issueDate: getThaiCertificateDate(),
+    teacherName: 'ครูจักรพงษ์ สำรองพันธ์',
+    teacherTitle: 'ครูผู้สอนกลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี',
   };
 
   return (
@@ -118,6 +149,34 @@ export default function QuizResultPage() {
             <span>เวลาที่ใช้: {formatTimer(result.timeSpent)}</span>
           </div>
         </div>
+
+        {/* E-Certificate Banner if passed */}
+        {isPassed && (
+          <div className="p-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-left">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Award className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs font-extrabold text-amber-950 dark:text-amber-300">
+                  🎉 ยินดีด้วย! คุณผ่านเกณฑ์การทดสอบ {isHonor && '(ระดับดีเยี่ยม)'}
+                </h4>
+                <p className="text-[11px] text-amber-800 dark:text-amber-400">
+                  คุณสามารถกดรับและพิมพ์เกียรติบัตรออนไลน์ได้ทันที
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowCertModal(true)}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-md shadow-amber-500/20 flex items-center gap-1.5 shrink-0 cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>กดรับเกียรติบัตร</span>
+            </button>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
@@ -181,47 +240,41 @@ export default function QuizResultPage() {
                   </div>
                 </div>
 
-                {/* Choices list review */}
-                <div className="space-y-2 text-xs">
-                  {q.choices.map((c) => {
-                    const isUserPick = c.id === userChoiceId;
-                    const isAnswer = c.is_correct;
+                {/* Choices */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
+                  {q.choices.map((choice) => {
+                    const isSelected = userChoiceId === choice.id;
+                    const isChoiceCorrect = choice.is_correct;
 
-                    let rowStyle = 'border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 text-slate-600 dark:text-slate-400';
-                    if (isAnswer) {
-                      rowStyle = 'border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-200 font-semibold';
-                    } else if (isUserPick && !isAnswer) {
-                      rowStyle = 'border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/50 text-rose-900 dark:text-rose-200';
+                    let choiceStyle = 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-700 dark:text-slate-300';
+                    if (isChoiceCorrect) {
+                      choiceStyle = 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 font-bold';
+                    } else if (isSelected && !isChoiceCorrect) {
+                      choiceStyle = 'border-rose-500 bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-300 line-through';
                     }
 
                     return (
                       <div
-                        key={c.id}
-                        className={`p-3 rounded-xl border flex items-center justify-between gap-2 ${rowStyle}`}
+                        key={choice.id}
+                        className={`p-3.5 rounded-2xl border text-xs flex items-center justify-between gap-2 ${choiceStyle}`}
                       >
-                        <div className="flex items-center gap-2">
-                          <span>{c.choice_text}</span>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 text-[11px] shrink-0 font-bold">
-                          {isUserPick && !isAnswer && <span className="text-rose-600">คำตอบของคุณ ✗</span>}
-                          {isAnswer && <span className="text-emerald-600">คำตอบที่ถูกต้อง ✓</span>}
-                        </div>
+                        <span>{choice.choice_text}</span>
+                        {isChoiceCorrect && (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        )}
+                        {isSelected && !isChoiceCorrect && (
+                          <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                        )}
                       </div>
                     );
                   })}
                 </div>
 
-                {/* Teacher Explanation */}
+                {/* Explanation */}
                 {q.explanation && (
-                  <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/60 text-xs space-y-1">
-                    <div className="font-bold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                      <span>คำอธิบายเฉลยจากครู:</span>
-                    </div>
-                    <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-                      {q.explanation}
-                    </p>
+                  <div className="p-3.5 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 text-xs text-blue-900 dark:text-blue-300 leading-relaxed">
+                    <span className="font-bold">💡 คำอธิบายเฉลย: </span>
+                    {q.explanation}
                   </div>
                 )}
               </div>
@@ -229,6 +282,13 @@ export default function QuizResultPage() {
           })}
         </div>
       </div>
+
+      {/* Certificate Modal */}
+      <CertificateModal
+        isOpen={showCertModal}
+        onClose={() => setShowCertModal(false)}
+        data={certData}
+      />
     </div>
   );
 }

@@ -5,11 +5,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { 
-  GraduationCap, 
   School, 
   CheckCircle2, 
   Trophy, 
-  Clock, 
   KeyRound, 
   Plus, 
   LogOut, 
@@ -17,7 +15,10 @@ import {
   PlayCircle, 
   ArrowRight,
   Loader2,
-  Calendar
+  Award,
+  Send,
+  ExternalLink,
+  MessageSquare
 } from 'lucide-react';
 import { 
   getStudentProfile, 
@@ -30,6 +31,10 @@ import {
   type StudentQuizAttempt,
   type StudentLearningLog
 } from '@/services/student';
+import { getStudentAllSubmissions, type AssignmentSubmissionRow } from '@/services/assignments';
+import { LeaderboardCard } from '@/components/public/leaderboard-card';
+import { CertificateModal } from '@/components/public/certificate-modal';
+import { generateCertificateCode, getThaiCertificateDate, type CertificateData } from '@/services/certificate';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
 
@@ -37,17 +42,21 @@ export default function StudentDashboardPage() {
   const router = useRouter();
   const toast = useToast();
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'classrooms' | 'quizzes' | 'logs'>('classrooms');
+  const [activeTab, setActiveTab] = useState<'classrooms' | 'quizzes' | 'homework' | 'leaderboard' | 'logs'>('classrooms');
 
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [enrollments, setEnrollments] = useState<StudentEnrollment[]>([]);
   const [quizAttempts, setQuizAttempts] = useState<StudentQuizAttempt[]>([]);
   const [learningLogs, setLearningLogs] = useState<StudentLearningLog[]>([]);
+  const [homeworkList, setHomeworkList] = useState<AssignmentSubmissionRow[]>([]);
 
   // Join Code Modal
   const [joinCode, setJoinCode] = useState('');
   const [joining, setJoining] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
+
+  // Certificate Modal
+  const [selectedCert, setSelectedCert] = useState<CertificateData | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -62,11 +71,12 @@ export default function StudentDashboardPage() {
         return;
       }
 
-      const [p, enr, qz, logs] = await Promise.all([
+      const [p, enr, qz, logs, hw] = await Promise.all([
         getStudentProfile(user.id),
         getStudentEnrollments(user.id),
         getStudentQuizAttempts(user.id),
         getStudentLearningLogs(user.id),
+        getStudentAllSubmissions(user.id),
       ]);
 
       if (!ignore) {
@@ -84,6 +94,7 @@ export default function StudentDashboardPage() {
         setEnrollments(enr);
         setQuizAttempts(qz);
         setLearningLogs(logs);
+        setHomeworkList(hw);
         setLoading(false);
       }
     }
@@ -103,156 +114,114 @@ export default function StudentDashboardPage() {
       userId: profile.id,
       joinCode: joinCode.trim().toUpperCase(),
     });
+
     setJoining(false);
 
     if (!res.success) {
-      toast.error('เข้าร่วมไม่สำเร็จ', res.error || 'ไม่พบห้องเรียนที่ตรงกับรหัสดังกล่าว');
+      toast.error('ไม่สามารถสมัครได้', res.error || 'รหัสห้องเรียนไม่ถูกต้อง');
       return;
     }
 
-    toast.success('สมัครเข้าห้องเรียนสำเร็จ', `เข้าร่วมห้องเรียน "${res.classroomTitle}" เรียบร้อยแล้ว`);
+    toast.success('สมัครเข้าเรียนสำเร็จ!', `เข้าสู่ห้องเรียน "${res.classroomTitle}" เรียบร้อย`);
     setShowJoinModal(false);
     setJoinCode('');
-    
+
     // Refresh enrollments
-    const freshEnr = await getStudentEnrollments(profile.id);
-    setEnrollments(freshEnr);
+    const newEnrollments = await getStudentEnrollments(profile.id);
+    setEnrollments(newEnrollments);
   };
 
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    toast.info('ออกจากระบบแล้ว', 'กลับสู่หน้าหลัก');
+    toast.success('ออกจากระบบแล้ว', 'ขอบคุณที่เข้ามาเรียนรู้กับครูคิงครับ');
     router.push('/');
+  };
+
+  const openCertificate = (title: string, percentage?: number) => {
+    if (!profile) return;
+    setSelectedCert({
+      certificateNo: generateCertificateCode('KCL-CERT'),
+      studentName: profile.full_name,
+      gradeLevel: profile.grade_level,
+      schoolName: profile.school || 'โรงเรียนวัดบางโฉลงใน',
+      title,
+      percentage,
+      issueDate: getThaiCertificateDate(),
+      teacherName: 'ครูจักรพงษ์ สำรองพันธ์',
+      teacherTitle: 'ครูผู้สอนกลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี',
+    });
   };
 
   if (loading) {
     return (
-      <div className="min-h-[70vh] flex flex-col items-center justify-center gap-3">
-        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-        <span className="text-xs text-slate-500 font-semibold">กำลังโหลดข้อมูลการเรียนของนักเรียน...</span>
+      <div className="min-h-[80vh] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <span className="text-xs text-slate-500 font-bold">กำลังโหลดข้อมูลแดชบอร์ดนักเรียน...</span>
+        </div>
       </div>
     );
   }
 
   const completedCount = learningLogs.filter((l) => l.action === 'complete').length;
   const avgScore = quizAttempts.length > 0
-    ? Math.round(quizAttempts.reduce((sum, a) => sum + (a.percentage || 0), 0) / quizAttempts.length)
+    ? Math.round(quizAttempts.reduce((acc, q) => acc + q.percentage, 0) / quizAttempts.length)
     : 0;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* 1. Student Header Profile Banner */}
-      <div className="p-6 sm:p-10 rounded-3xl bg-gradient-to-r from-blue-700 via-indigo-800 to-slate-900 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="flex items-start sm:items-center gap-4 sm:gap-6">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-white/20 border-2 border-white/30 backdrop-blur-xs flex items-center justify-center text-white shrink-0 shadow-lg">
-            <GraduationCap className="w-9 h-9 sm:w-11 sm:h-11 text-blue-200" />
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-in fade-in">
+      {/* 1. Top Profile Hero Card */}
+      <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+        <div className="flex items-center gap-4 relative z-10">
+          <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-2xl font-black text-amber-400 shadow-inner">
+            {profile?.full_name?.charAt(0) || 'น'}
           </div>
-          <div className="space-y-1.5 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-blue-100 text-[11px] font-bold">
-                {profile?.grade_level} {profile?.classroom_name}
-              </span>
-              {profile?.student_number && profile?.student_number !== '-' && (
-                <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[11px] font-bold">
-                  เลขที่ {profile?.student_number}
-                </span>
-              )}
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 text-[11px] font-bold">
-                {profile?.school}
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight">
+                {profile?.full_name}
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-extrabold uppercase">
+                นักเรียน
               </span>
             </div>
-
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold truncate">
-              {profile?.full_name}
-            </h1>
-            <p className="text-xs text-blue-200 font-mono">
-              {profile?.email}
+            <p className="text-xs text-blue-200 mt-1">
+              {profile?.grade_level} • {profile?.classroom_name} {profile?.student_number !== '-' && `เลขที่ ${profile?.student_number}`} • {profile?.school || 'โรงเรียนวัดบางโฉลงใน'}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2.5 relative z-10">
           <button
             type="button"
             onClick={() => setShowJoinModal(true)}
-            className="px-4 py-2.5 rounded-xl bg-white text-blue-900 hover:bg-blue-50 text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer"
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-xs font-bold shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
           >
-            <Plus className="w-4 h-4 text-blue-600" />
-            <span>+ สมัครเข้าห้องเรียนด้วยรหัส</span>
+            <Plus className="w-4 h-4" />
+            <span>สมัครเข้าห้องเรียนด้วยรหัส</span>
           </button>
 
           <button
             type="button"
             onClick={handleLogout}
-            className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-            title="ออกจากระบบ"
+            className="px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold backdrop-blur-xs transition-colors flex items-center gap-1.5 cursor-pointer"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">ออกจากระบบ</span>
           </button>
         </div>
       </div>
 
-      {/* 2. Join Code Modal */}
-      {showJoinModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-          <form onSubmit={handleEnroll} className="w-full max-w-md p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <KeyRound className="w-4 h-4 text-blue-600" />
-                <span>สมัครเข้าห้องเรียน (Join Classroom)</span>
-              </h3>
-              <button type="button" onClick={() => setShowJoinModal(false)} className="text-xs text-slate-400 hover:text-slate-600">
-                ยกเลิก
-              </button>
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
-                กรอกรหัสห้องเรียน (Join Code) เช่น COM01, HIST601, CODE406
-              </label>
-              <input
-                type="text"
-                required
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                placeholder="กรอกรหัสห้องเรียน..."
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm font-mono uppercase tracking-wider text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              />
-              <p className="text-[11px] text-slate-400 mt-1">
-                * ขอรหัสเข้าร่วมห้องเรียนได้จากครูคิงประจำวิชา
-              </p>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowJoinModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                ปิด
-              </button>
-              <button
-                type="submit"
-                disabled={joining || !joinCode}
-                className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1.5"
-              >
-                {joining ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                <span>สมัครเข้าห้องเรียนทันที</span>
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* 3. Summary Stat Cards */}
+      {/* 2. Stat Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950 text-blue-600 flex items-center justify-center shrink-0">
             <School className="w-6 h-6" />
           </div>
           <div>
-            <span className="text-2xl font-extrabold text-slate-900 dark:text-white block">
+            <span className="text-2xl font-black text-slate-900 dark:text-white block">
               {enrollments.length}
             </span>
             <span className="text-xs text-slate-500">ห้องเรียนที่สมัคร</span>
@@ -264,7 +233,7 @@ export default function StudentDashboardPage() {
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <span className="text-2xl font-extrabold text-slate-900 dark:text-white block">
+            <span className="text-2xl font-black text-slate-900 dark:text-white block">
               {completedCount}
             </span>
             <span className="text-xs text-slate-500">บทเรียนที่เรียนจบ</span>
@@ -273,101 +242,111 @@ export default function StudentDashboardPage() {
 
         <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950 text-purple-600 flex items-center justify-center shrink-0">
-            <CheckSquare className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-2xl font-extrabold text-slate-900 dark:text-white block">
-              {quizAttempts.length}
-            </span>
-            <span className="text-xs text-slate-500">แบบทดสอบที่ทำ</span>
-          </div>
-        </div>
-
-        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950 text-amber-600 flex items-center justify-center shrink-0">
             <Trophy className="w-6 h-6" />
           </div>
           <div>
-            <span className="text-2xl font-extrabold text-slate-900 dark:text-white block">
+            <span className="text-2xl font-black text-slate-900 dark:text-white block">
               {avgScore}%
             </span>
             <span className="text-xs text-slate-500">คะแนนสอบเฉลี่ย</span>
           </div>
         </div>
+
+        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950 text-amber-600 flex items-center justify-center shrink-0">
+            <Send className="w-6 h-6" />
+          </div>
+          <div>
+            <span className="text-2xl font-black text-slate-900 dark:text-white block">
+              {homeworkList.length}
+            </span>
+            <span className="text-xs text-slate-500">การบ้านที่ส่ง</span>
+          </div>
+        </div>
       </div>
 
-      {/* 4. Tab Navigation */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+      {/* 3. Tab Bar Navigation */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto">
         <button
           type="button"
           onClick={() => setActiveTab('classrooms')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+          className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'classrooms'
               ? 'bg-blue-600 text-white shadow-xs'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
-          <School className="w-4 h-4" />
-          <span>ห้องเรียนของฉัน ({enrollments.length})</span>
+          🏫 ห้องเรียนของฉัน ({enrollments.length})
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('quizzes')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+          className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'quizzes'
               ? 'bg-blue-600 text-white shadow-xs'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
-          <CheckSquare className="w-4 h-4" />
-          <span>ผลคะแนนสอบ ({quizAttempts.length})</span>
+          📝 ผลคะแนนสอบ ({quizAttempts.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('homework')}
+          className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
+            activeTab === 'homework'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          📤 การบ้านที่ส่ง ({homeworkList.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('leaderboard')}
+          className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
+            activeTab === 'leaderboard'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          🏆 กระดานผู้นำ & เหรียญรางวัล
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('logs')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+          className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'logs'
               ? 'bg-blue-600 text-white shadow-xs'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
-          <Clock className="w-4 h-4" />
-          <span>Log ประวัติการเข้าเรียน</span>
+          📜 Log การเข้าเรียน ({learningLogs.length})
         </button>
       </div>
 
-      {/* 5. Tab Content */}
-      {/* TAB 1: Enrolled Classrooms */}
+      {/* 4. Tab 1: Enrolled Classrooms */}
       {activeTab === 'classrooms' && (
         <div className="space-y-4">
           {enrollments.length === 0 ? (
             <div className="p-12 text-center rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 space-y-4">
               <School className="w-12 h-12 text-slate-300 mx-auto" />
-              <div className="space-y-1">
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  ยังไม่ได้สมัครเข้าห้องเรียนใดๆ
-                </h3>
-                <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  กดปุ่มด้านล่างเพื่อกรอกรหัสห้องเรียน เช่น COM01 หรือ HIST601 หรือเลือกห้องเรียนจากรายการทั้งหมด
-                </p>
-              </div>
-              <div className="flex items-center justify-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowJoinModal(true)}
-                  className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-xs hover:bg-blue-700"
-                >
-                  + กรอกรหัสห้องเรียน
-                </button>
-                <Link
-                  href="/classroom"
-                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-200"
-                >
-                  ดูห้องเรียนทั้งหมด
-                </Link>
-              </div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                ยังไม่ได้สมัครเข้าห้องเรียนใด
+              </h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                กดปุ่ม &quot;สมัครเข้าห้องเรียนด้วยรหัส&quot; ด้านบน แล้วพิมพ์รหัสวิชา (เช่น COM01, HIST601) เพื่อเริ่มเรียนได้ทันที
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowJoinModal(true)}
+                className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-xs hover:bg-blue-700"
+              >
+                + สมัครเข้าห้องเรียนตอนนี้
+              </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -378,56 +357,53 @@ export default function StudentDashboardPage() {
                 return (
                   <div
                     key={enr.id}
-                    className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs hover:shadow-lg transition-all overflow-hidden flex flex-col justify-between"
+                    className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:shadow-xl hover:border-blue-300 transition-all flex flex-col overflow-hidden group"
                   >
-                    <div>
-                      <div className="relative aspect-16/9 bg-slate-950 overflow-hidden">
-                        {cls.cover_image ? (
-                          <Image
-                            src={cls.cover_image}
-                            alt={cls.title}
-                            fill
-                            unoptimized
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-blue-500">
-                            <School className="w-12 h-12 opacity-30" />
-                          </div>
-                        )}
-                        <div className="absolute top-3 left-3 px-2.5 py-0.5 rounded-lg bg-blue-600 text-white text-[10px] font-bold">
-                          {cls.grade_level || 'ทุกระดับชั้น'}
-                        </div>
-                        {cls.join_code && (
-                          <div className="absolute top-3 right-3 px-2 py-0.5 rounded-lg bg-slate-900/80 backdrop-blur-xs text-white text-[10px] font-mono font-bold">
-                            Code: {cls.join_code}
-                          </div>
-                        )}
+                    <div className="relative aspect-video w-full overflow-hidden bg-slate-100">
+                      <Image
+                        src={cls.cover_image || 'https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=600&auto=format&fit=crop'}
+                        alt={cls.title}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md text-white text-[10px] font-bold">
+                        {cls.grade_level || 'ทุกระดับชั้น'}
                       </div>
+                    </div>
 
-                      <div className="p-5 space-y-2">
-                        <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug">
+                    <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                      <div>
+                        <span className="text-[10px] font-bold text-blue-600 uppercase">
+                          {cls.subject || 'กลุ่มสาระการเรียนรู้'}
+                        </span>
+                        <h3 className="text-sm font-extrabold text-slate-900 dark:text-white mt-1 group-hover:text-blue-600 transition-colors">
                           {cls.title}
                         </h3>
                         {cls.description && (
-                          <p className="text-xs text-slate-500 line-clamp-2">
+                          <p className="text-xs text-slate-500 mt-1 line-clamp-2">
                             {cls.description}
                           </p>
                         )}
                       </div>
-                    </div>
 
-                    <div className="px-5 py-3.5 bg-slate-50/60 dark:bg-slate-950/40 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                      <span className="text-[11px] text-slate-400 font-semibold">
-                        วิชา {cls.subject}
-                      </span>
-                      <Link
-                        href={`/classroom/${cls.slug}`}
-                        className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1"
-                      >
-                        <span>เข้าเรียน</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() => openCertificate(`ผ่านการเรียนรู้หลักสูตร "${cls.title}"`)}
+                          className="text-[11px] font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Award className="w-3.5 h-3.5" />
+                          <span>เกียรติบัตร</span>
+                        </button>
+
+                        <Link
+                          href={`/classroom/${cls.slug}`}
+                          className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors"
+                        >
+                          <span>เข้าเรียน</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 );
@@ -437,135 +413,237 @@ export default function StudentDashboardPage() {
         </div>
       )}
 
-      {/* TAB 2: Quiz Results & Scores */}
+      {/* 5. Tab 2: Quiz Scores */}
       {activeTab === 'quizzes' && (
         <div className="space-y-4">
           {quizAttempts.length === 0 ? (
             <div className="p-12 text-center rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 space-y-3">
               <CheckSquare className="w-12 h-12 text-slate-300 mx-auto" />
               <h3 className="text-base font-bold text-slate-900 dark:text-white">ยังไม่มีประวัติการทำแบบทดสอบ</h3>
-              <p className="text-xs text-slate-500">เลือกทำแบบทดสอบออนไลน์เพื่อวัดผลสัมฤทธิ์และสะสมคะแนน</p>
-              <Link
-                href="/quiz"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 text-white text-xs font-bold shadow-xs hover:bg-purple-700"
-              >
-                <span>ไปที่ศูนย์แบบทดสอบ (Quiz Center)</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+              <p className="text-xs text-slate-500">ไปที่ศูนย์แบบทดสอบเพื่อฝึกทำข้อสอบเก็บคะแนนได้ทันที</p>
+              <Link href="/quiz" className="inline-flex px-5 py-2.5 rounded-xl bg-purple-600 text-white text-xs font-bold shadow-xs">
+                ไปที่ศูนย์แบบทดสอบ
               </Link>
             </div>
           ) : (
             <div className="space-y-3">
-              {quizAttempts.map((att) => {
-                const isPassed = att.percentage >= 60;
-
-                return (
-                  <div
-                    key={att.id}
-                    className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                  >
-                    <div className="flex items-start sm:items-center gap-4 min-w-0">
-                      <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center font-bold shrink-0 ${
-                        isPassed
-                          ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600 border border-emerald-200 dark:border-emerald-800'
-                          : 'bg-rose-50 dark:bg-rose-950 text-rose-600 border border-rose-200 dark:border-rose-800'
+              {quizAttempts.map((att) => (
+                <div
+                  key={att.id}
+                  className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                        {att.quiz_title}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
+                        att.percentage >= 60
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                          : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
                       }`}>
-                        <span className="text-lg leading-none">{att.score}</span>
-                        <span className="text-[10px] opacity-70">/{att.total_score}</span>
-                      </div>
-
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                            isPassed ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                          }`}>
-                            {isPassed ? 'ผ่านเกณฑ์ ✅' : 'ควรปรับปรุง ⚠️'} ({att.percentage}%)
-                          </span>
-                          {att.grade_level && (
-                            <span className="text-[10px] text-slate-400">
-                              {att.grade_level}
-                            </span>
-                          )}
-                        </div>
-
-                        <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                          {att.quiz_title}
-                        </h4>
-
-                        <div className="flex items-center gap-3 text-[11px] text-slate-400 pt-0.5">
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            <span>{Math.round(att.time_spent_seconds / 60)} นาที</span>
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            <span>{new Date(att.started_at).toLocaleDateString('th-TH')}</span>
-                          </span>
-                        </div>
-                      </div>
+                        {att.percentage >= 60 ? 'ผ่านเกณฑ์ ✅' : 'ไม่ผ่านเกณฑ์ ⚠️'}
+                      </span>
                     </div>
 
-                    <Link
-                      href={`/quiz/${att.quiz_id}/play`}
-                      className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-purple-50 dark:hover:bg-purple-950 text-slate-700 hover:text-purple-600 text-xs font-bold transition-colors shrink-0 flex items-center justify-center gap-1"
-                    >
-                      <span>ทำซ้ำอีกครั้ง</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 3: Learning Activity Logs */}
-      {activeTab === 'logs' && (
-        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Clock className="w-4 h-4 text-blue-600" />
-              <span>บันทึกประวัติการเข้าเรียนและการดูคลิป (Learning Activity Logs)</span>
-            </h3>
-            <span className="text-xs text-slate-400 font-semibold">
-              {learningLogs.length} รายการ
-            </span>
-          </div>
-
-          {learningLogs.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-6">
-              ยังไม่มีบันทึกประวัติการเข้าเรียน เมื่อท่านเข้าชมคลิปในห้องเรียน ระบบจะบันทึก Log อัตโนมัติ
-            </p>
-          ) : (
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {learningLogs.map((log) => (
-                <div key={log.id} className="py-3 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                      log.action === 'complete'
-                        ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600'
-                        : 'bg-blue-50 dark:bg-blue-950 text-blue-600'
-                    }`}>
-                      {log.action === 'complete' ? <CheckCircle2 className="w-4 h-4" /> : <PlayCircle className="w-4 h-4" />}
-                    </div>
-                    <div className="min-w-0">
-                      <span className="text-xs font-bold text-slate-900 dark:text-white block truncate">
-                        {log.action === 'complete' ? 'เรียนจบบทเรียน' : 'เข้าชมคลิปวิดีโอการสอน'}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        Lesson ID: {log.lesson_id.slice(0, 8)}...
-                      </span>
+                    <div className="text-xs text-slate-400 flex items-center gap-3">
+                      <span>{att.grade_level || 'ทุกระดับชั้น'}</span>
+                      <span>•</span>
+                      <span>วันที่ทำ: {new Date(att.started_at).toLocaleDateString('th-TH')}</span>
                     </div>
                   </div>
 
-                  <span className="text-[11px] text-slate-400 shrink-0 font-mono">
-                    {new Date(log.created_at).toLocaleString('th-TH')}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <span className="text-lg font-black text-blue-600 block">
+                        {att.score} / {att.total_score} ({att.percentage}%)
+                      </span>
+                    </div>
+
+                    {att.percentage >= 60 && (
+                      <button
+                        type="button"
+                        onClick={() => openCertificate(`ผ่านการทดสอบวัดผลสัมฤทธิ์ "${att.quiz_title}"`, att.percentage)}
+                        className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-xs flex items-center gap-1 cursor-pointer"
+                      >
+                        <Award className="w-3.5 h-3.5" />
+                        <span>เกียรติบัตร</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </div>
+      )}
+
+      {/* 6. Tab 3: Homework Submissions */}
+      {activeTab === 'homework' && (
+        <div className="space-y-4">
+          {homeworkList.length === 0 ? (
+            <div className="p-12 text-center rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+              <Send className="w-12 h-12 text-slate-300 mx-auto" />
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">ยังไม่มีรายการส่งการบ้าน</h3>
+              <p className="text-xs text-slate-500">นักเรียนสามารถส่งภาพใบงาน หรือลิงก์ Scratch ในแต่ละบทเรียนได้</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {homeworkList.map((hw) => (
+                <div
+                  key={hw.id}
+                  className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                        ชิ้นงานประจำบทเรียน
+                      </span>
+                      {hw.status === 'graded' ? (
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-bold">
+                          ตรวจแล้ว (คะแนน: {hw.score}/{hw.max_score})
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 text-xs font-bold">
+                          รอครูตรวจ
+                        </span>
+                      )}
+                    </div>
+
+                    {hw.teacher_feedback && (
+                      <p className="text-xs text-emerald-700 dark:text-emerald-300 flex items-center gap-1 font-semibold">
+                        <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+                        <span>ข้อเสนอแนะครู: &quot;{hw.teacher_feedback}&quot;</span>
+                      </p>
+                    )}
+
+                    <div className="text-[10px] text-slate-400">
+                      ส่งเมื่อ: {new Date(hw.submitted_at).toLocaleString('th-TH')}
+                    </div>
+                  </div>
+
+                  {hw.content_url && (
+                    <a
+                      href={hw.content_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-bold text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 flex items-center gap-1 shrink-0"
+                    >
+                      <span>เปิดดูชิ้นงานที่ส่ง</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 7. Tab 4: Leaderboard & Badges */}
+      {activeTab === 'leaderboard' && (
+        <LeaderboardCard currentUserId={profile?.id} />
+      )}
+
+      {/* 8. Tab 5: Activity Learning Logs */}
+      {activeTab === 'logs' && (
+        <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 dark:bg-slate-950/60 border-b border-slate-100 dark:border-slate-800 text-slate-500 font-bold">
+                <tr>
+                  <th className="px-6 py-3.5">ประเภทกิจกรรม</th>
+                  <th className="px-6 py-3.5">รหัสบทเรียน</th>
+                  <th className="px-6 py-3.5 text-right">วันที่และเวลา</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {learningLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                    <td className="px-6 py-3.5 font-bold">
+                      {log.action === 'complete' ? (
+                        <span className="inline-flex items-center gap-1.5 text-emerald-600">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>เรียนจบและบันทึกความก้าวหน้า</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-blue-600">
+                          <PlayCircle className="w-3.5 h-3.5" />
+                          <span>เปิดดูคลิปวิดีโอบทเรียน</span>
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-3.5 text-slate-500 font-mono">
+                      {log.lesson_id}
+                    </td>
+                    <td className="px-6 py-3.5 text-right text-slate-400 font-mono">
+                      {new Date(log.created_at).toLocaleString('th-TH')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Join Code Modal */}
+      {showJoinModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="w-full max-w-md p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5">
+            <div className="text-center space-y-1.5">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center mx-auto shadow-xs">
+                <KeyRound className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                สมัครเข้าห้องเรียนด้วยรหัส
+              </h3>
+              <p className="text-xs text-slate-500">
+                กรอกรหัสเข้าห้องเรียนที่ได้รับจากครูจักรพงษ์ เช่น COM01 หรือ HIST601
+              </p>
+            </div>
+
+            <form onSubmit={handleEnroll} className="space-y-4">
+              <div>
+                <input
+                  type="text"
+                  required
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                  placeholder="พิมพ์รหัส เช่น COM01"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-center font-mono text-base font-extrabold uppercase tracking-widest text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowJoinModal(false)}
+                  className="w-1/2 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  disabled={joining}
+                  className="w-1/2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  {joining ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  <span>ยืนยันการสมัคร</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Certificate Modal */}
+      {selectedCert && (
+        <CertificateModal
+          isOpen={!!selectedCert}
+          onClose={() => setSelectedCert(null)}
+          data={selectedCert}
+        />
       )}
     </div>
   );

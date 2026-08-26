@@ -918,6 +918,57 @@ export interface Database {
         };
         Relationships: [];
       };
+      assignment_submissions: {
+        Row: {
+          id: string;
+          lesson_id: string;
+          classroom_id: string | null;
+          user_id: string;
+          student_name: string;
+          submission_type: 'link' | 'image' | 'text';
+          content_url: string | null;
+          notes: string | null;
+          score: number | null;
+          max_score: number;
+          status: 'pending' | 'graded' | 'needs_revision';
+          teacher_feedback: string | null;
+          submitted_at: string;
+          graded_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          lesson_id: string;
+          classroom_id?: string | null;
+          user_id: string;
+          student_name: string;
+          submission_type?: 'link' | 'image' | 'text';
+          content_url?: string | null;
+          notes?: string | null;
+          score?: number | null;
+          max_score?: number;
+          status?: 'pending' | 'graded' | 'needs_revision';
+          teacher_feedback?: string | null;
+          submitted_at?: string;
+          graded_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          lesson_id?: string;
+          classroom_id?: string | null;
+          user_id?: string;
+          student_name?: string;
+          submission_type?: 'link' | 'image' | 'text';
+          content_url?: string | null;
+          notes?: string | null;
+          score?: number | null;
+          max_score?: number;
+          status?: 'pending' | 'graded' | 'needs_revision';
+          teacher_feedback?: string | null;
+          submitted_at?: string;
+          graded_at?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
