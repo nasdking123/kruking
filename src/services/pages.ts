@@ -1,9 +1,8 @@
 import { createClient } from '@/lib/supabase/client';
+import { savePageAction, deletePageAction } from '@/actions/page-actions';
 import type { Database } from '@/types/database';
 
 export type PageRow = Database['public']['Tables']['pages']['Row'];
-type PageInsert = Database['public']['Tables']['pages']['Insert'];
-type PageUpdate = Database['public']['Tables']['pages']['Update'];
 
 export const INITIAL_PAGES: PageRow[] = [
   {
@@ -79,7 +78,17 @@ export async function getPages(): Promise<PageRow[]> {
     if (error || !data || data.length === 0) {
       return INITIAL_PAGES;
     }
-    return data as PageRow[];
+
+    // Merge missing initial pages so default pages always exist
+    const slugs = new Set(data.map((d) => d.slug));
+    const merged = [...data];
+    INITIAL_PAGES.forEach((init) => {
+      if (!slugs.has(init.slug)) {
+        merged.push(init);
+      }
+    });
+
+    return merged as PageRow[];
   } catch {
     return INITIAL_PAGES;
   }
@@ -130,83 +139,22 @@ export async function getPageById(id: string): Promise<PageRow | null> {
 }
 
 export async function savePage(pageData: Partial<PageRow>): Promise<{ success: boolean; data?: PageRow; error?: string }> {
-  try {
-    const supabase = createClient();
-    const isUuid = pageData.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pageData.id);
-
-    const cleanTitle = (pageData.title || 'หน้าใหม่').trim();
-    const cleanSlug = (pageData.slug || `page-${Date.now()}`)
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s\u0E00-\u0E7F-]/g, '')
-      .replace(/[\s_-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-
-    const recordData = {
-      title: cleanTitle,
-      slug: cleanSlug,
-      excerpt: pageData.excerpt?.trim() || null,
-      content: pageData.content || '',
-      cover_image: pageData.cover_image?.trim() || null,
-      template: pageData.template || 'default',
-      status: pageData.status || 'published',
-      visibility: pageData.visibility || 'public',
-      seo_title: pageData.seo_title?.trim() || cleanTitle,
-      seo_description: pageData.seo_description?.trim() || pageData.excerpt?.trim() || null,
-      og_image: pageData.og_image?.trim() || pageData.cover_image?.trim() || null,
-      updated_at: new Date().toISOString(),
-    };
-
-    if (isUuid && pageData.id) {
-      // Update by ID
-      const { error: updateError } = await supabase
-        .from('pages')
-        .update(recordData as PageUpdate)
-        .eq('id', pageData.id);
-
-      if (updateError) {
-        // Fallback upsert by slug
-        const { error: upsertError } = await supabase
-          .from('pages')
-          .upsert({ ...recordData, id: pageData.id } as PageInsert, { onConflict: 'slug' });
-
-        if (upsertError) return { success: false, error: upsertError.message };
-      }
-      return { success: true };
-    } else {
-      // Upsert by slug
-      const { error: insertError } = await supabase
-        .from('pages')
-        .upsert(
-          {
-            ...recordData,
-            created_at: new Date().toISOString(),
-          } as PageInsert,
-          { onConflict: 'slug' }
-        );
-
-      if (insertError) {
-        return { success: false, error: insertError.message };
-      }
-      return { success: true };
-    }
-  } catch (err: unknown) {
-    return { success: false, error: (err as Error).message };
-  }
+  return await savePageAction({
+    id: pageData.id,
+    title: pageData.title || 'หน้าใหม่',
+    slug: pageData.slug || `page-${Date.now()}`,
+    excerpt: pageData.excerpt,
+    content: pageData.content || '',
+    cover_image: pageData.cover_image,
+    template: pageData.template || 'default',
+    status: pageData.status as 'draft' | 'published' | 'archived',
+    visibility: pageData.visibility as 'public' | 'unlisted' | 'private',
+    seo_title: pageData.seo_title,
+    seo_description: pageData.seo_description,
+    og_image: pageData.og_image,
+  });
 }
 
 export async function deletePage(id: string): Promise<{ success: boolean; error?: string }> {
-  try {
-    const supabase = createClient();
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-    
-    let query = supabase.from('pages').update({ deleted_at: new Date().toISOString() });
-    query = isUuid ? query.eq('id', id) : query.eq('slug', id);
-
-    const { error } = await query;
-    if (error) return { success: false, error: error.message };
-    return { success: true };
-  } catch (err: unknown) {
-    return { success: false, error: (err as Error).message };
-  }
+  return await deletePageAction(id);
 }
