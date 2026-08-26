@@ -504,6 +504,9 @@ export interface Database {
           status: 'active' | 'archived';
           visibility: 'public' | 'private';
           join_code: string | null;
+          is_public?: boolean | null;
+          course_type?: 'public' | 'enrolled' | null;
+          estimated_hours?: number | null;
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
@@ -520,6 +523,9 @@ export interface Database {
           status?: 'active' | 'archived';
           visibility?: 'public' | 'private';
           join_code?: string | null;
+          is_public?: boolean | null;
+          course_type?: 'public' | 'enrolled' | null;
+          estimated_hours?: number | null;
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
@@ -536,6 +542,9 @@ export interface Database {
           status?: 'active' | 'archived';
           visibility?: 'public' | 'private';
           join_code?: string | null;
+          is_public?: boolean | null;
+          course_type?: 'public' | 'enrolled' | null;
+          estimated_hours?: number | null;
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;

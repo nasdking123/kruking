@@ -8,6 +8,26 @@ export type LessonRow = Database['public']['Tables']['lessons']['Row'];
 export interface ClassroomWithLessons extends ClassroomRow {
   courses?: (CourseRow & { lessons: LessonRow[] })[];
   lessons?: LessonRow[];
+  is_public?: boolean | null;
+  course_type?: 'public' | 'enrolled' | null;
+  estimated_hours?: number | null;
+  target_audience?: string | null;
+  learning_outcomes?: string[] | null;
+  certificate_available?: boolean | null;
+}
+
+/**
+ * Check if a classroom is a Public Open Access course (no login needed)
+ * Default to true for public coding/scratch open courses, or based on is_public flag.
+ */
+export function isClassroomPublic(cls?: ClassroomWithLessons | ClassroomRow | null): boolean {
+  if (!cls) return false;
+  const anyCls = cls as unknown as Record<string, unknown>;
+  if (anyCls.is_public === true || anyCls.course_type === 'public') return true;
+  if (anyCls.is_public === false || anyCls.course_type === 'enrolled') return false;
+  // If slug is scratch or coding, default to open public course
+  if (cls.slug === 'ส่วนประกอบของ-scratch' || cls.slug === 'cs-coding-classroom') return true;
+  return false;
 }
 
 export async function getClassrooms(): Promise<ClassroomWithLessons[]> {
@@ -227,3 +247,33 @@ export async function createLessonForClassroom({
     return { success: false, error: String(err) };
   }
 }
+
+export async function updateClassroomAccessType({
+  classroomId,
+  courseType,
+  estimatedHours,
+}: {
+  classroomId: string;
+  courseType: 'public' | 'enrolled';
+  estimatedHours?: number;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = createClient();
+    const isPublic = courseType === 'public';
+
+    const { error } = await supabase
+      .from('classrooms')
+      .update({
+        is_public: isPublic,
+        course_type: courseType,
+        estimated_hours: estimatedHours || 6,
+      } as unknown as Partial<ClassroomRow>)
+      .eq('id', classroomId);
+
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+

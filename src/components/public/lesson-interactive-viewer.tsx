@@ -16,10 +16,11 @@ import {
   Award,
   Lock,
   LogIn,
-  Loader2
+  Loader2,
+  Globe
 } from 'lucide-react';
 import { YouTubePlayer } from '@/components/common/youtube-player';
-import type { ClassroomWithLessons, LessonRow } from '@/services/classroom';
+import { isClassroomPublic, type ClassroomWithLessons, type LessonRow } from '@/services/classroom';
 import { useToast } from '@/components/ui/toast';
 import { createClient } from '@/lib/supabase/client';
 import { logLessonActivity } from '@/services/student';
@@ -44,6 +45,7 @@ export function LessonInteractiveViewer({ classroom, lesson }: Props) {
   const [studentInfo, setStudentInfo] = useState<{ id: string; name: string; grade?: string; school?: string } | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
 
+  const isPublic = isClassroomPublic(classroom);
   const storageKey = `kruking_lesson_completed_${lesson.id}`;
 
   const isCompleted = useSyncExternalStore(
@@ -110,14 +112,14 @@ export function LessonInteractiveViewer({ classroom, lesson }: Props) {
       <div className="min-h-[70vh] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-          <span className="text-xs text-slate-500 font-bold">กำลังตรวจสอบสิทธิ์การเข้าสู่ห้องเรียนออนไลน์...</span>
+          <span className="text-xs text-slate-500 font-bold">กำลังโหลดห้องเรียนออนไลน์...</span>
         </div>
       </div>
     );
   }
 
-  // Auth Gate: Student must be logged in to access online classroom lessons
-  if (!studentInfo) {
+  // Auth Gate: Only block if the classroom is NOT public AND user is not logged in
+  if (!isPublic && !studentInfo) {
     return (
       <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-6 animate-in fade-in">
         <div className="w-16 h-16 rounded-3xl bg-blue-100 dark:bg-blue-950 text-blue-600 flex items-center justify-center mx-auto shadow-md">
@@ -126,13 +128,13 @@ export function LessonInteractiveViewer({ classroom, lesson }: Props) {
 
         <div className="space-y-2">
           <span className="px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 text-xs font-bold">
-            {classroom.title}
+            {classroom.title} (คอร์สในชั้นเรียน)
           </span>
           <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white pt-1">
             กรุณาเข้าสู่ระบบก่อนเข้าเรียน
           </h2>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
-            ระบบจำเป็นต้องระบุตัวตนนามสกุลและระดับชั้นของนักเรียน เพื่อบันทึกเวลาดูคลิปวิดีโอ (Log), บันทึกการเรียนจบ, ส่งการบ้าน และสะสมคะแนนบน Leaderboard
+            วิชานี้เป็นคอร์สเก็บคะแนนในชั้นเรียน ระบบจำเป็นต้องระบุตัวตนนามสกุลของนักเรียน เพื่อบันทึกเวลาดูคลิปวิดีโอ (Log), บันทึกการเรียนจบ, ส่งการบ้าน และสะสมคะแนนบน Leaderboard
           </p>
         </div>
 
@@ -166,7 +168,7 @@ export function LessonInteractiveViewer({ classroom, lesson }: Props) {
 
   const certData: CertificateData = {
     certificateNo: generateCertificateCode('KCL-COURSE'),
-    studentName: studentInfo.name,
+    studentName: studentInfo?.name || 'ผู้เรียนออนไลน์ (Thai MOOC)',
     gradeLevel: classroom.grade_level || 'ประถมศึกษาปีที่ 6',
     schoolName: 'โรงเรียนวัดบางโฉลงใน',
     title: `ผ่านการศึกษาและเรียนรู้ครบตามหลักสูตร "${classroom.title}"`,
@@ -177,27 +179,39 @@ export function LessonInteractiveViewer({ classroom, lesson }: Props) {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-in fade-in">
-      {/* 1. Breadcrumb */}
-      <nav className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-        <Link href="/" className="hover:text-blue-600 transition-colors">หน้าแรก</Link>
-        <ChevronRight className="w-3.5 h-3.5" />
-        <Link href="/classroom" className="hover:text-blue-600 transition-colors">ห้องเรียนออนไลน์</Link>
-        <ChevronRight className="w-3.5 h-3.5" />
-        <Link href={`/classroom/${classroom.slug}`} className="hover:text-blue-600 transition-colors truncate max-w-[150px]">
-          {classroom.title}
-        </Link>
-        <ChevronRight className="w-3.5 h-3.5" />
-        <span className="text-slate-900 dark:text-white font-bold truncate max-w-[200px]">
-          {lesson.title}
-        </span>
-      </nav>
+      {/* 1. Breadcrumb & Status */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <nav className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <Link href="/" className="hover:text-blue-600 transition-colors">หน้าแรก</Link>
+          <ChevronRight className="w-3.5 h-3.5" />
+          <Link href="/classroom" className="hover:text-blue-600 transition-colors">คลังรายวิชา MOOC</Link>
+          <ChevronRight className="w-3.5 h-3.5" />
+          <Link href={`/classroom/${classroom.slug}`} className="hover:text-blue-600 transition-colors truncate max-w-[150px]">
+            {classroom.title}
+          </Link>
+          <ChevronRight className="w-3.5 h-3.5" />
+          <span className="text-slate-900 dark:text-white font-bold truncate max-w-[200px]">
+            {lesson.title}
+          </span>
+        </nav>
+
+        {isPublic && (
+          <span className="px-3 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800 inline-flex items-center gap-1 self-start sm:self-auto">
+            <Globe className="w-3 h-3" />
+            <span>Open Access (เรียนฟรีไม่ต้องล็อกอิน)</span>
+          </span>
+        )}
+      </div>
 
       {/* 2. Header & Action Row */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
         <div>
           <div className="flex items-center gap-2 text-blue-600 font-bold text-xs mb-1">
             <School className="w-4 h-4" />
-            <span>{classroom.title} ({classroom.grade_level || 'ประถมศึกษา'}) • ผู้เรียน: {studentInfo.name}</span>
+            <span>
+              {classroom.title} ({classroom.grade_level || 'ทุกระดับชั้น'})
+              {studentInfo && ` • ผู้เรียน: ${studentInfo.name}`}
+            </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             {lesson.title}
@@ -206,36 +220,48 @@ export function LessonInteractiveViewer({ classroom, lesson }: Props) {
 
         {/* Completion & Certificate Buttons */}
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleToggleComplete}
-            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs ${
-              isCompleted
-                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 border border-emerald-200 dark:border-emerald-800'
-                : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800'
-            }`}
-          >
-            {isCompleted ? (
-              <>
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>เรียนจบแล้ว ✅</span>
-              </>
-            ) : (
-              <>
-                <Circle className="w-4 h-4" />
-                <span>ทำเครื่องหมายว่าเรียนจบ</span>
-              </>
-            )}
-          </button>
+          {studentInfo ? (
+            <>
+              <button
+                type="button"
+                onClick={handleToggleComplete}
+                className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs ${
+                  isCompleted
+                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 border border-emerald-200 dark:border-emerald-800'
+                    : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800'
+                }`}
+              >
+                {isCompleted ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>เรียนจบแล้ว ✅</span>
+                  </>
+                ) : (
+                  <>
+                    <Circle className="w-4 h-4" />
+                    <span>ทำเครื่องหมายว่าเรียนจบ</span>
+                  </>
+                )}
+              </button>
 
-          <button
-            type="button"
-            onClick={() => setShowCertModal(true)}
-            className="px-3.5 py-2 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-md shadow-amber-500/20 flex items-center gap-1.5 cursor-pointer"
-          >
-            <Award className="w-4 h-4" />
-            <span>รับเกียรติบัตร</span>
-          </button>
+              <button
+                type="button"
+                onClick={() => setShowCertModal(true)}
+                className="px-3.5 py-2 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-md shadow-amber-500/20 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Award className="w-4 h-4" />
+                <span>รับเกียรติบัตร</span>
+              </button>
+            </>
+          ) : (
+            <Link
+              href={`/student/login?redirectTo=/classroom/${classroom.slug}/lessons/${lesson.id}`}
+              className="px-4 py-2 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 flex items-center gap-1.5 transition-all"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>เข้าสู่ระบบเพื่อบันทึกประวัติ</span>
+            </Link>
+          )}
         </div>
       </div>
 

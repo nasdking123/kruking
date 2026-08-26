@@ -11,10 +11,17 @@ import {
   BookOpen, 
   ExternalLink,
   KeyRound,
-  Loader2
+  Loader2,
+  Globe,
+  Lock
 } from 'lucide-react';
-import { getClassrooms, createLessonForClassroom, type ClassroomWithLessons } from '@/services/classroom';
-import { YouTubePlayer } from '@/components/common/youtube-player';
+import { 
+  getClassrooms, 
+  createLessonForClassroom, 
+  isClassroomPublic,
+  updateClassroomAccessType,
+  type ClassroomWithLessons 
+} from '@/services/classroom';
 import { getYouTubeThumbnail } from '@/lib/youtube';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
@@ -29,6 +36,8 @@ export default function AdminClassroomManagerPage() {
   const [newTitle, setNewTitle] = useState('');
   const [newGrade, setNewGrade] = useState('ประถมศึกษาปีที่ 6');
   const [newSubject, setNewSubject] = useState('ประวัติศาสตร์');
+  const [newCourseType, setNewCourseType] = useState<'public' | 'enrolled'>('public');
+  const [newEstimatedHours, setNewEstimatedHours] = useState(6);
   const [newJoinCode, setNewJoinCode] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newCover, setNewCover] = useState('https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=1200&auto=format&fit=crop');
@@ -66,6 +75,31 @@ export default function AdminClassroomManagerPage() {
 
   const selectedClassroom = classrooms.find((c) => c.id === selectedClassroomId) || classrooms[0] || null;
 
+  // Change Course Access Type (Public / Enrolled)
+  const handleToggleAccessType = async (courseType: 'public' | 'enrolled') => {
+    if (!selectedClassroom) return;
+
+    const res = await updateClassroomAccessType({
+      classroomId: selectedClassroom.id,
+      courseType,
+      estimatedHours: selectedClassroom.estimated_hours || 6,
+    });
+
+    if (!res.success) {
+      toast.error('ไม่สามารถเปลี่ยนประเภทคอร์สได้', res.error || 'เกิดข้อผิดพลาด');
+      return;
+    }
+
+    toast.success(
+      'เปลี่ยนประเภทคอร์สสำเร็จ!',
+      courseType === 'public'
+        ? 'วิชานี้เป็นคอร์สสาธารณะ (ทุกคนเข้าเรียนได้ ไม่ต้องล็อกอิน)'
+        : 'วิชานี้เป็นคอร์สในชั้นเรียน (ต้องล็อกอิน เพื่อเก็บคะแนน ปพ.5)'
+    );
+
+    await refreshData();
+  };
+
   // Create Classroom
   const handleCreateClassroom = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,9 +112,11 @@ export default function AdminClassroomManagerPage() {
       .replace(/[^\w\s\u0E00-\u0E7F-]/g, '')
       .replace(/[\s_-]+/g, '-') || `class-${Date.now()}`;
 
+    const isPublic = newCourseType === 'public';
+
     const { data: created, error } = await supabase
       .from('classrooms')
-      .insert([{
+      .insert({
         title: newTitle.trim(),
         slug,
         grade_level: newGrade,
@@ -89,8 +125,11 @@ export default function AdminClassroomManagerPage() {
         description: newDesc.trim() || null,
         cover_image: newCover.trim() || null,
         status: 'active',
-        visibility: 'public'
-      }])
+        visibility: 'public',
+        is_public: isPublic,
+        course_type: newCourseType,
+        estimated_hours: newEstimatedHours,
+      })
       .select()
       .single();
 
@@ -167,6 +206,8 @@ export default function AdminClassroomManagerPage() {
     }
   };
 
+  const isCurrentPublic = isClassroomPublic(selectedClassroom);
+
   return (
     <div className="p-6 sm:p-10 max-w-7xl mx-auto space-y-8">
       {/* 1. Header */}
@@ -174,10 +215,10 @@ export default function AdminClassroomManagerPage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2.5">
             <School className="w-7 h-7 text-blue-600" />
-            <span>จัดการห้องเรียนออนไลน์ & คลิปบทเรียน YouTube</span>
+            <span>จัดการห้องเรียนออนไลน์ & Thai MOOC Courses</span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            สร้างห้องเรียน เพิ่มสารบัญบทเรียน และแปะคลิปวิดีโอจาก YouTube ให้นักเรียนเข้าเรียนออนไลน์ได้ทันที
+            สร้างคอร์สเรียน กำหนดประเภทคอร์ส (เปิดเรียนฟรี หรือ คอร์สเก็บคะแนนในชั้นเรียน) และแปะคลิป YouTube
           </p>
         </div>
 
@@ -187,7 +228,7 @@ export default function AdminClassroomManagerPage() {
           className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all flex items-center gap-2 cursor-pointer w-fit"
         >
           <Plus className="w-4 h-4" />
-          <span>+ สร้างห้องเรียนใหม่</span>
+          <span>+ สร้างห้องเรียน / คอร์สใหม่</span>
         </button>
       </div>
 
@@ -197,7 +238,7 @@ export default function AdminClassroomManagerPage() {
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <School className="w-4 h-4 text-blue-600" />
-              <span>สร้างห้องเรียนออนไลน์ใหม่</span>
+              <span>สร้างห้องเรียนออนไลน์ใหม่ (New Thai MOOC Course)</span>
             </h3>
             <button type="button" onClick={() => setShowAddClass(false)} className="text-xs text-slate-400 hover:text-slate-600">
               ยกเลิก
@@ -206,87 +247,138 @@ export default function AdminClassroomManagerPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">ชื่อวิชา / ห้องเรียน *</label>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                ชื่อวิชา / ห้องเรียน *
+              </label>
               <input
                 type="text"
                 required
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="เช่น ประวัติศาสตร์ ป.6 หรือ โค้ดดิ้งสร้างสรรค์..."
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                placeholder="เช่น การสร้างเกมด้วย Scratch 3.0"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-bold text-slate-900 dark:text-white"
               />
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">ระดับชั้น</label>
-              <input
-                type="text"
-                value={newGrade}
-                onChange={(e) => setNewGrade(e.target.value)}
-                placeholder="เช่น ประถมศึกษาปีที่ 6"
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              />
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                ประเภทการเข้าเรียน (Access Type) *
+              </label>
+              <select
+                value={newCourseType}
+                onChange={(e) => setNewCourseType(e.target.value as 'public' | 'enrolled')}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-bold text-slate-900 dark:text-white"
+              >
+                <option value="public">🌐 คอร์สสาธารณะ (เปิดฟรี ไม่ต้องล็อกอิน)</option>
+                <option value="enrolled">🔐 คอร์สในชั้นเรียน (ต้องล็อกอิน เพื่อเก็บคะแนน ปพ.5)</option>
+              </select>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">กลุ่มสาระการเรียนรู้</label>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                กลุ่มสาระ / หมวดวิชา *
+              </label>
               <input
                 type="text"
+                required
                 value={newSubject}
                 onChange={(e) => setNewSubject(e.target.value)}
-                placeholder="เช่น สังคมศึกษา, วิทยาศาสตร์และเทคโนโลยี..."
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                placeholder="เช่น วิทยาการคำนวณ, ประวัติศาสตร์"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white"
               />
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">รหัสเข้าร่วมห้องเรียน (Join Code)</label>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                ระดับชั้น *
+              </label>
+              <select
+                value={newGrade}
+                onChange={(e) => setNewGrade(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-bold text-slate-900 dark:text-white"
+              >
+                <option value="ประถมศึกษาปีที่ 3">ประถมศึกษาปีที่ 3</option>
+                <option value="ประถมศึกษาปีที่ 4">ประถมศึกษาปีที่ 4</option>
+                <option value="ประถมศึกษาปีที่ 5">ประถมศึกษาปีที่ 5</option>
+                <option value="ประถมศึกษาปีที่ 6">ประถมศึกษาปีที่ 6</option>
+                <option value="มัธยมศึกษา">มัธยมศึกษา</option>
+                <option value="ทุกระดับชั้น">ทุกระดับชั้น / บุคคลทั่วไป</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                รหัสเข้าห้องเรียน (Join Code)
+              </label>
               <input
                 type="text"
                 value={newJoinCode}
                 onChange={(e) => setNewJoinCode(e.target.value.toUpperCase())}
-                placeholder="เช่น HIST601 (ไม่ใส่ระบบจะสุ่มให้อัตโนมัติ)"
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-mono uppercase text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                placeholder="เช่น COM02, HIST602"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-mono font-bold text-slate-900 dark:text-white"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                ชั่วโมงการเรียนรู้โดยประมาณ (ชั่วโมง)
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={newEstimatedHours}
+                onChange={(e) => setNewEstimatedHours(Number(e.target.value))}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-bold text-slate-900 dark:text-white"
               />
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">URL ภาพหน้าปกห้องเรียน</label>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              URL รูปภาพหน้าปกคอร์ส (Cover Image URL)
+            </label>
             <input
-              type="text"
+              type="url"
               value={newCover}
               onChange={(e) => setNewCover(e.target.value)}
-              placeholder="https://images.unsplash.com/photo-..."
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              placeholder="https://images.unsplash.com/..."
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white"
             />
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">คำอธิบายห้องเรียน</label>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              คำอธิบายรายวิชา (Course Description)
+            </label>
             <textarea
               rows={2}
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
-              placeholder="สรุปเนื้อหาและวัตถุประสงค์ของห้องเรียนนี้..."
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              placeholder="อธิบายเนื้อหาและวัตถุประสงค์ของรายวิชานี้..."
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white"
             />
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => setShowAddClass(false)} className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+            <button
+              type="button"
+              onClick={() => setShowAddClass(false)}
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold"
+            >
               ยกเลิก
             </button>
-            <button type="submit" className="px-5 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-xs cursor-pointer">
-              บันทึกสร้างห้องเรียน
+            <button
+              type="submit"
+              className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20"
+            >
+              บันทึกห้องเรียนใหม่
             </button>
           </div>
         </form>
       )}
 
-      {/* 3. Classrooms List Pills */}
+      {/* 3. Classroom Selector Pills */}
       <div className="space-y-3">
         <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block">
           เลือกห้องเรียนที่ต้องการจัดการ (Select Classroom)
@@ -294,6 +386,8 @@ export default function AdminClassroomManagerPage() {
         <div className="flex items-center gap-3 overflow-x-auto pb-2">
           {classrooms.map((cls) => {
             const isSelected = selectedClassroom?.id === cls.id;
+            const isPub = isClassroomPublic(cls);
+
             return (
               <button
                 key={cls.id}
@@ -307,7 +401,12 @@ export default function AdminClassroomManagerPage() {
               >
                 <School className="w-4 h-4" />
                 <div className="text-left">
-                  <div>{cls.title}</div>
+                  <div className="flex items-center gap-1.5">
+                    <span>{cls.title}</span>
+                    <span className={`text-[9px] px-1.5 py-0.2 rounded font-extrabold ${isPub ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-white'}`}>
+                      {isPub ? 'Open' : 'Enrolled'}
+                    </span>
+                  </div>
                   <div className={`text-[10px] font-medium ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
                     {cls.grade_level} • {cls.lessons?.length || 0} บทเรียน
                   </div>
@@ -323,14 +422,41 @@ export default function AdminClassroomManagerPage() {
         <div className="space-y-6">
           {/* Classroom Header Card */}
           <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="flex items-center gap-2 flex-wrap">
+                {/* Access Type Switch Buttons */}
+                <div className="inline-flex items-center p-1 rounded-xl bg-black/40 border border-white/10 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleAccessType('public')}
+                    className={`px-3 py-1 rounded-lg font-bold text-xs transition-all flex items-center gap-1 cursor-pointer ${
+                      isCurrentPublic
+                        ? 'bg-emerald-500 text-white shadow-xs'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Globe className="w-3.5 h-3.5" />
+                    <span>🌐 คอร์สสาธารณะ (เปิดฟรี)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleToggleAccessType('enrolled')}
+                    className={`px-3 py-1 rounded-lg font-bold text-xs transition-all flex items-center gap-1 cursor-pointer ${
+                      !isCurrentPublic
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>🔐 คอร์สในชั้นเรียน (ล็อกอิน)</span>
+                  </button>
+                </div>
+
                 <span className="px-2.5 py-0.5 rounded-md bg-white/10 text-xs font-semibold text-blue-200">
                   {selectedClassroom.grade_level}
                 </span>
-                <span className="px-2.5 py-0.5 rounded-md bg-blue-500/30 text-xs font-semibold">
-                  {selectedClassroom.subject}
-                </span>
+                
                 {selectedClassroom.join_code && (
                   <span className="px-2.5 py-0.5 rounded-md bg-amber-400/20 text-amber-300 text-xs font-mono font-bold flex items-center gap-1">
                     <KeyRound className="w-3.5 h-3.5" />
@@ -398,167 +524,157 @@ export default function AdminClassroomManagerPage() {
                   value={lessonTitle}
                   onChange={(e) => setLessonTitle(e.target.value)}
                   placeholder={`เช่น บทที่ ${(selectedClassroom.lessons?.length || 0) + 1}: การสถาปนากรุงรัตนโกสินทร์...`}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-bold text-slate-900 dark:text-white"
                 />
               </div>
 
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  ลิงก์คลิปวิดีโอจาก YouTube (YouTube Video URL) 🎬
+                  URL คลิป YouTube (YouTube Link) *
                 </label>
                 <input
-                  type="text"
+                  type="url"
+                  required
                   value={lessonVideoUrl}
                   onChange={(e) => setLessonVideoUrl(e.target.value)}
-                  placeholder="เช่น https://www.youtube.com/watch?v=... หรือ https://youtu.be/..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-mono text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  placeholder="เช่น https://www.youtube.com/watch?v=xxxx หรือ https://youtu.be/xxxx"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-mono text-xs text-slate-900 dark:text-white"
                 />
-                <p className="text-[10px] text-slate-400 mt-1">
-                  * รองรับทุกลิงก์ YouTube ทั้งแบบ watch?v=, youtu.be, shorts หรือโค้ด iframe
-                </p>
-
-                {/* Live YouTube Preview in Modal */}
-                {lessonVideoUrl && (
-                  <div className="mt-3 max-w-md">
-                    <span className="text-[11px] font-bold text-slate-500 block mb-1">
-                      ตัวอย่างคลิปวิดีโอ (Live YouTube Preview):
-                    </span>
-                    <YouTubePlayer url={lessonVideoUrl} title="Live Preview" />
-                  </div>
-                )}
               </div>
 
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  คำอธิบายสรุปบทเรียนย่อ
+                  คำอธิบายบทเรียนย่อ (Description)
                 </label>
-                <input
-                  type="text"
+                <textarea
+                  rows={2}
                   value={lessonDesc}
                   onChange={(e) => setLessonDesc(e.target.value)}
-                  placeholder="สรุปเนื้อหาสำคัญหรือผลการเรียนรู้ที่คาดหวังในคลิปนี้..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  placeholder="สรุปสาระสำคัญสั้นๆ ของคลิปนี้..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white"
                 />
               </div>
 
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  เนื้อหาบทเรียน / บันทึกการสอน (Content Notes)
+                  เนื้อหาบทเรียนละเอียด / ใบความรู้ (Active Learning Notes)
                 </label>
                 <textarea
                   rows={4}
                   value={lessonContent}
                   onChange={(e) => setLessonContent(e.target.value)}
-                  placeholder="พิมพ์เนื้อหาการสอน ข้อควรจำ หรือขั้นตอนกิจกรรม (รองรับ Markdown)..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  placeholder="ใส่เนื้อหาประกอบการสอน หรือข้อความทบทวน..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white"
                 />
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setShowAddLesson(false)} className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowAddLesson(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold"
+                >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
                   disabled={savingLesson}
-                  className="px-5 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-xs cursor-pointer flex items-center gap-1.5"
+                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold shadow-md flex items-center gap-1.5"
                 >
-                  {savingLesson ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
+                  {savingLesson ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                   <span>บันทึกบทเรียน YouTube</span>
                 </button>
               </div>
             </form>
           )}
 
-          {/* Lessons List in Classroom */}
+          {/* Lessons List for this classroom */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-blue-600" />
-                <span>รายการบทเรียนทั้งหมด ({selectedClassroom.lessons?.length || 0} บทเรียน)</span>
-              </h3>
-            </div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-blue-600" />
+              <span>สารบัญบทเรียนทั้งหมดในห้องนี้ ({selectedClassroom.lessons?.length || 0} บทเรียน)</span>
+            </h3>
 
             {(!selectedClassroom.lessons || selectedClassroom.lessons.length === 0) ? (
-              <div className="p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 text-center space-y-3">
-                <PlayCircle className="w-10 h-10 text-slate-400 mx-auto" />
-                <p className="text-xs text-slate-500 font-semibold">ยังไม่มีบทเรียนในห้องนี้</p>
+              <div className="p-12 text-center rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+                <PlayCircle className="w-12 h-12 text-slate-300 mx-auto" />
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">ยังไม่มีคลิปบทเรียนในห้องนี้</p>
                 <button
                   type="button"
                   onClick={() => setShowAddLesson(true)}
                   className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-xs hover:bg-blue-700"
                 >
-                  + เพิ่มคลิปบทเรียนแรก
+                  + แปะคลิป YouTube บทแรก
                 </button>
               </div>
             ) : (
-              <div className="space-y-3">
-                {selectedClassroom.lessons.map((lsn, idx) => {
-                  const ytThumb = getYouTubeThumbnail(lsn.video_url);
+              <div className="space-y-4">
+                {selectedClassroom.lessons.map((lsn, index) => {
+                  const thumb = getYouTubeThumbnail(lsn.video_url);
 
                   return (
                     <div
                       key={lsn.id}
-                      className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                      className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4"
                     >
-                      <div className="flex items-start sm:items-center gap-4 min-w-0">
-                        {ytThumb ? (
+                      <div className="flex items-start gap-4">
+                        {thumb ? (
                           <div className="relative w-28 h-18 rounded-2xl overflow-hidden bg-slate-950 shrink-0 border border-slate-200 dark:border-slate-800">
                             <Image
-                              src={ytThumb}
+                              src={thumb}
                               alt={lsn.title}
                               fill
                               unoptimized
                               className="object-cover"
                             />
                             <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                              <PlayCircle className="w-6 h-6 text-white drop-shadow-md" />
+                              <PlayCircle className="w-6 h-6 text-white" />
                             </div>
                           </div>
                         ) : (
-                          <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold shrink-0 text-sm">
-                            {idx + 1}
+                          <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0">
+                            {index + 1}
                           </div>
                         )}
 
-                        <div className="min-w-0 space-y-1">
+                        <div className="space-y-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-[10px] font-bold">
-                              บทที่ {lsn.sort_order || idx + 1}
+                              บทที่ {lsn.sort_order || index + 1}
                             </span>
                             {lsn.video_url && (
-                              <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1">
-                                <PlayCircle className="w-3 h-3" />
-                                <span>YouTube Linked</span>
+                              <span className="text-[10px] text-rose-600 dark:text-rose-400 font-mono truncate max-w-xs">
+                                {lsn.video_url}
                               </span>
                             )}
                           </div>
 
-                          <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                          <h4 className="text-sm font-bold text-slate-900 dark:text-white">
                             {lsn.title}
                           </h4>
 
-                          {lsn.video_url && (
-                            <p className="text-[11px] text-slate-400 font-mono truncate max-w-md">
-                              {lsn.video_url}
+                          {lsn.description && (
+                            <p className="text-xs text-slate-500 line-clamp-1">
+                              {lsn.description}
                             </p>
                           )}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0 self-end md:self-auto">
                         <Link
                           href={`/classroom/${selectedClassroom.slug}/lessons/${lsn.id}`}
                           target="_blank"
-                          className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950 text-slate-600 hover:text-blue-600 transition-colors"
-                          title="ดูคลิปบทเรียน"
+                          className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center gap-1.5"
                         >
-                          <ExternalLink className="w-4 h-4" />
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>ดูหน้านักเรียน</span>
                         </Link>
+
                         <button
                           type="button"
                           onClick={() => handleDeleteLesson(lsn.id, lsn.title)}
-                          className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer"
+                          className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 text-rose-600 text-xs transition-colors cursor-pointer"
                           title="ลบบทเรียนนี้"
                         >
                           <Trash2 className="w-4 h-4" />
