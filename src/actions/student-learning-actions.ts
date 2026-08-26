@@ -80,6 +80,36 @@ export async function gradeSubmissionAction(params: {
       }
     }
 
+    // 3. Insert In-App Notification to Student
+    await supabase.from('notifications').insert({
+      user_id: params.userId,
+      title:
+        params.status === 'needs_revision'
+          ? '⚠️ คุณครูให้ส่งการบ้านแก้ไข'
+          : `🎉 ตรวจการบ้านแล้ว: ได้รับ ${cleanScore}/${params.maxScore || 20} คะแนน`,
+      message:
+        params.status === 'needs_revision'
+          ? `บทเรียน "${params.lessonTitle || 'บทเรียน'}" มีคำแนะนำจากครู: ${cleanFeedback || 'โปรดแก้ไขและส่งใหม่'}`
+          : `บทเรียน "${params.lessonTitle || 'บทเรียน'}" ได้รับการตรวจและบันทึกคะแนนสะสมเรียบร้อยแล้ว`,
+      type: params.status === 'needs_revision' ? 'revision_requested' : 'assignment_graded',
+      link: '/student/history',
+    });
+
+    // 4. Record Audit Log
+    await supabase.from('audit_logs').insert({
+      actor_id: user.id,
+      actor_name: user.user_metadata?.full_name || 'ครูผู้สอน',
+      action: 'grade_submission',
+      target_type: 'assignment_submission',
+      target_id: params.submissionId,
+      details: {
+        score: cleanScore,
+        maxScore: params.maxScore,
+        status: params.status,
+        studentId: params.userId,
+      },
+    });
+
     revalidatePath('/admin/submissions');
     revalidatePath('/student/portfolio');
     revalidatePath('/student/points');
@@ -97,18 +127,50 @@ export async function reviewCertificateAction(params: {
   rejectReason?: string;
 }) {
   try {
-    const { supabase } = await requireTeacherOrAdmin();
+    const { supabase, user } = await requireTeacherOrAdmin();
 
-    const { error } = await supabase
+    const { data: cert, error } = await supabase
       .from('student_certificates')
       .update({
         status: params.status,
         reject_reason: params.status === 'rejected' ? (params.rejectReason || 'เอกสารไม่ตรงตามเกณฑ์').trim() : null,
         approved_at: params.status === 'approved' ? new Date().toISOString() : null,
       })
-      .eq('id', params.certificateId);
+      .eq('id', params.certificateId)
+      .select()
+      .single();
 
     if (error) return { success: false, error: error.message };
+
+    // 1. Insert In-App Notification to Student
+    if (cert) {
+      await supabase.from('notifications').insert({
+        user_id: cert.user_id,
+        title:
+          params.status === 'approved'
+            ? '🎖️ เกียรติบัตรของคุณได้รับการอนุมัติแล้ว!'
+            : '❌ เกียรติบัตรไม่ผ่านการอนุมัติ',
+        message:
+          params.status === 'approved'
+            ? `เกียรติบัตร "${cert.title}" ได้รับการรับรองและออก QR Code ตรวจสอบเรียบร้อยแล้ว`
+            : `เกียรติบัตร "${cert.title}" มีข้อผิดพลาด: ${params.rejectReason || 'เอกสารไม่ตรงตามเกณฑ์'}`,
+        type: params.status === 'approved' ? 'certificate_approved' : 'certificate_rejected',
+        link: params.status === 'approved' ? `/verify-cert/${cert.id}` : '/student/certificates',
+      });
+    }
+
+    // 2. Record Audit Log
+    await supabase.from('audit_logs').insert({
+      actor_id: user.id,
+      actor_name: user.user_metadata?.full_name || 'ครูผู้สอน',
+      action: 'review_certificate',
+      target_type: 'student_certificate',
+      target_id: params.certificateId,
+      details: {
+        status: params.status,
+        rejectReason: params.rejectReason,
+      },
+    });
 
     revalidatePath('/admin/certificates');
     revalidatePath('/student/certificates');
@@ -129,19 +191,22 @@ export async function recordCompetitionResultAction(params: {
   competitionTitle: string;
 }) {
   try {
-    const { supabase } = await requireTeacherOrAdmin();
+    const { supabase, user } = await requireTeacherOrAdmin();
 
-    const { error } = await supabase
+    const { error: resError } = await supabase
       .from('competition_results')
-      .upsert({
-        competition_id: params.competitionId,
-        user_id: params.userId,
-        rank: Number(params.rank) || 1,
-        score: Number(params.score) || 0,
-        notes: (params.notes || '').trim() || null,
-      });
+      .upsert(
+        {
+          competition_id: params.competitionId,
+          user_id: params.userId,
+          rank: Number(params.rank) || 1,
+          score: Number(params.score) || 0,
+          notes: (params.notes || '').trim() || null,
+        },
+        { onConflict: 'competition_id,user_id' }
+      );
 
-    if (error) return { success: false, error: error.message };
+    if (resError) return { success: false, error: resError.message };
 
     // Award Competition Bonus Points safely
     if (params.pointsReward > 0) {
@@ -160,9 +225,34 @@ export async function recordCompetitionResultAction(params: {
           point_type: 'competition',
           source_id: params.competitionId,
           description: `รางวัลอันดับที่ ${params.rank} การแข่งขัน "${params.competitionTitle}" (+${params.pointsReward} คะแนน)`,
+          created_by: user.id,
+        });
+
+        // Notification
+        await supabase.from('notifications').insert({
+          user_id: params.userId,
+          title: `🏆 บันทึกผลการแข่งขัน: อันดับที่ ${params.rank}`,
+          message: `คุณได้รับรางวัลอันดับที่ ${params.rank} จากการแข่งขัน "${params.competitionTitle}" รับโบนัส +${params.pointsReward} คะแนน`,
+          type: 'points_awarded',
+          link: '/student/points',
         });
       }
     }
+
+    // Audit Log
+    await supabase.from('audit_logs').insert({
+      actor_id: user.id,
+      actor_name: user.user_metadata?.full_name || 'ครูผู้สอน',
+      action: 'record_competition_result',
+      target_type: 'competitions',
+      target_id: params.competitionId,
+      details: {
+        rank: params.rank,
+        score: params.score,
+        pointsReward: params.pointsReward,
+        userId: params.userId,
+      },
+    });
 
     revalidatePath('/admin/competitions');
     revalidatePath('/competitions');
