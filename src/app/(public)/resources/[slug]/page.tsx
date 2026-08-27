@@ -2,18 +2,28 @@ import React from 'react';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Image from 'next/image';
 import { 
   ChevronRight, 
   Calendar, 
   Eye, 
   Download, 
   ArrowLeft, 
-  FileCheck
+  FolderOpen,
+  UserCheck,
+  Award,
+  Sparkles,
+  BookOpen,
+  Share2
 } from 'lucide-react';
-import { getWorkBySlug, trackWorkView } from '@/services/works';
+import { getWorkBySlug, getWorks, trackWorkView } from '@/services/works';
+import { getSettings } from '@/services/settings';
 import { formatDateThai } from '@/lib/utils';
 import { ShareButtons } from '@/components/public/share-buttons';
 import { Badge } from '@/components/ui/badge';
+import { RichMarkdown } from '@/components/common/rich-markdown';
+import { DocumentPdfViewer } from '@/components/public/document-pdf-viewer';
+import { WorkCard } from '@/components/public/work-card';
 
 export async function generateMetadata({
   params,
@@ -27,6 +37,11 @@ export async function generateMetadata({
   return {
     title: `${work.title} | คลังสื่อการสอนครูคิง`,
     description: work.description || undefined,
+    openGraph: {
+      title: work.title,
+      description: work.description || undefined,
+      images: work.cover_image ? [work.cover_image] : undefined,
+    },
   };
 }
 
@@ -36,7 +51,11 @@ export default async function ResourceDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const work = await getWorkBySlug(slug);
+  const [work, settings, allWorks] = await Promise.all([
+    getWorkBySlug(slug),
+    getSettings(),
+    getWorks({ limit: 8 }),
+  ]);
 
   if (!work) {
     notFound();
@@ -44,48 +63,100 @@ export default async function ResourceDetailPage({
 
   await trackWorkView(work.id);
 
+  // Related works in same subject or category
+  const relatedWorks = allWorks
+    .filter((w) => w.id !== work.id && (w.category_id === work.category_id || w.subject === work.subject || w.type === 'resource'))
+    .slice(0, 4);
+
+  // Extract file URL from details or content
+  const fileUrl = work.details?.file_url 
+    ? String(work.details.file_url) 
+    : work.details?.pdf_url 
+      ? String(work.details.pdf_url) 
+      : null;
+
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-        <Link href="/" className="hover:text-blue-600 transition-colors">หน้าแรก</Link>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+      {/* 1. BREADCRUMB NAVIGATION */}
+      <nav className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+        <Link href="/" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-1">
+          <span>หน้าแรก</span>
+        </Link>
         <ChevronRight className="w-3.5 h-3.5" />
-        <Link href="/resources" className="hover:text-blue-600 transition-colors">คลังสื่อการสอน</Link>
+        <Link href="/resources" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+          คลังสื่อการสอน
+        </Link>
+        {work.category && (
+          <>
+            <ChevronRight className="w-3.5 h-3.5" />
+            <Link href={`/resources?category=${work.category.slug}`} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+              {work.category.name}
+            </Link>
+          </>
+        )}
         <ChevronRight className="w-3.5 h-3.5" />
-        <span className="text-slate-900 dark:text-white font-medium truncate max-w-xs">{work.title}</span>
+        <span className="text-slate-900 dark:text-white font-medium truncate max-w-xs sm:max-w-md">
+          {work.title}
+        </span>
       </nav>
 
-      {/* Header Info */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="primary">สื่อการสอน</Badge>
-          {work.grade_level && <Badge variant="outline">{work.grade_level}</Badge>}
-          {work.subject && <Badge variant="outline">{work.subject}</Badge>}
+      {/* 2. HERO HEADER SECTION */}
+      <div className="p-6 sm:p-10 rounded-3xl bg-gradient-to-tr from-slate-900 via-indigo-950 to-blue-950 text-white shadow-2xl relative overflow-hidden space-y-6">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Badges */}
+        <div className="flex items-center gap-2 flex-wrap relative z-10">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30 text-xs font-bold backdrop-blur-xs">
+            <FolderOpen className="w-3.5 h-3.5" />
+            <span>สื่อการสอน (Resource)</span>
+          </div>
+          {work.grade_level && (
+            <span className="px-3 py-1 rounded-full bg-white/10 text-white border border-white/10 text-xs font-semibold backdrop-blur-xs">
+              {work.grade_level}
+            </span>
+          )}
+          {work.subject && (
+            <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-semibold backdrop-blur-xs">
+              {work.subject}
+            </span>
+          )}
+          {work.category && (
+            <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-400/30 text-xs font-semibold backdrop-blur-xs">
+              {work.category.name}
+            </span>
+          )}
         </div>
 
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
+        {/* Title */}
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-snug relative z-10">
           {work.title}
         </h1>
 
+        {/* Description */}
         {work.description && (
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+          <p className="text-sm sm:text-base text-slate-200 leading-relaxed max-w-3xl font-normal relative z-10">
             {work.description}
           </p>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-4 pt-4 pb-4 border-y border-slate-200 dark:border-slate-800 text-xs text-slate-500">
-          <div className="flex items-center gap-4 flex-wrap">
-            <span className="flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-blue-500" />
+        {/* Metadata stats bar */}
+        <div className="pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-300 relative z-10">
+          <div className="flex items-center gap-5 flex-wrap">
+            <span className="flex items-center gap-1.5 text-blue-300">
+              <Calendar className="w-4 h-4 text-blue-400" />
               <span>{formatDateThai(work.published_at || work.created_at)}</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <Eye className="w-3.5 h-3.5 text-slate-400" />
-              <span>{work.view_count} ครั้ง</span>
+              <Eye className="w-4 h-4 text-slate-400" />
+              <span>{work.view_count || 1} ครั้ง</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <Download className="w-3.5 h-3.5 text-slate-400" />
-              <span>{work.download_count} ดาวน์โหลด</span>
+              <Download className="w-4 h-4 text-emerald-400" />
+              <span>{work.download_count || 0} ดาวน์โหลด</span>
+            </span>
+            <span className="flex items-center gap-1.5 text-amber-300 font-semibold">
+              <UserCheck className="w-4 h-4" />
+              <span>ผู้สร้างสรรค์: {settings.teacher_name || 'ครูคิง (Kru King)'}</span>
             </span>
           </div>
 
@@ -93,70 +164,124 @@ export default async function ResourceDetailPage({
         </div>
       </div>
 
-      {/* Action Download Box */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 border border-blue-200/80 dark:border-blue-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-            <FileCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            <span>ไฟล์สื่อประกอบการสอนพร้อมใช้งาน</span>
-          </h3>
-          <p className="text-xs text-slate-600 dark:text-slate-400">
-            ดาวน์โหลดไฟล์สไลด์/เอกสาร สำหรับนำไปจัดกิจกรรมในชั้นเรียน
-          </p>
+      {/* 3. INTERACTIVE PDF / DOCUMENT VIEWER ENGINE */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-slate-900 dark:text-white font-extrabold text-base sm:text-lg">
+            <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <span>พรีวิวและดาวน์โหลดเอกสาร (Document & PDF Viewer)</span>
+          </div>
         </div>
 
-        <a
-          href={work.details?.file_url ? String(work.details.file_url) : '#'}
-          download
-          className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2 shrink-0"
-        >
-          <Download className="w-4 h-4" />
-          <span>ดาวน์โหลดสื่อการสอน</span>
-        </a>
-      </div>
+        <DocumentPdfViewer
+          fileUrl={fileUrl}
+          title={work.title}
+          coverImage={work.cover_image}
+          gradeLevel={work.grade_level}
+          subject={work.subject}
+          fallbackContent={work.content}
+        />
+      </section>
 
-      {/* Cover Image */}
-      {work.cover_image && (
-        <div className="rounded-2xl overflow-hidden shadow-md border border-slate-200 dark:border-slate-800">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={work.cover_image}
-            alt={work.title}
-            className="w-full max-h-[450px] object-cover"
+      {/* 4. RICH ARTICLE & STRUCTURED CONTENT */}
+      <section className="p-6 sm:p-10 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-6">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-blue-600" />
+            <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">
+              เนื้อหาบทเรียน กิจกรรม และเกณฑ์การประเมิน (Full Content)
+            </h2>
+          </div>
+          <span className="text-[11px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">
+            Active Learning 5E
+          </span>
+        </div>
+
+        {/* Rich Markdown Output */}
+        <RichMarkdown content={work.content} />
+      </section>
+
+      {/* 5. TEACHER KRU KING PROFILE CARD */}
+      <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-blue-50/80 via-slate-50 to-indigo-50/50 dark:from-slate-900 dark:via-slate-900 dark:to-blue-950/40 border border-blue-200/60 dark:border-blue-900/40 flex flex-col sm:flex-row items-center gap-6 shadow-xs">
+        <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden border-2 border-white dark:border-slate-800 shadow-md shrink-0">
+          <Image
+            src={settings.teacher_avatar_url || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=600&auto=format&fit=crop"}
+            alt={settings.teacher_name || "ครูคิง"}
+            fill
+            unoptimized
+            className="object-cover"
           />
         </div>
+
+        <div className="space-y-2 text-center sm:text-left flex-1 min-w-0">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-[10px] font-bold">
+            <Award className="w-3 h-3 text-amber-500" />
+            <span>ครูผู้สร้างสรรค์สื่อการสอน</span>
+          </div>
+
+          <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
+            {settings.teacher_name || "ครูคิง (Kru King)"}
+          </h3>
+
+          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2">
+            {settings.teacher_bio || "ครูผู้สอนกลุ่มสาระวิทยาศาสตร์และเทคโนโลยี • สังคมศึกษา มุ่งมั่นสร้างสรรค์สื่อการเรียนรู้เชิงรุก Active Learning และการประยุกต์ใช้เทคโนโลยีดิจิทัล"}
+          </p>
+
+          <div className="pt-2 flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs">
+            <Link
+              href="/about"
+              className="font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+            >
+              <span>ดูประวัติและผลงานครูคิง</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+            <Link
+              href="/contact"
+              className="font-semibold text-slate-600 dark:text-slate-400 hover:underline"
+            >
+              ติดต่อสอบถาม / อบรม
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* 6. RELATED WORKS SHOWCASE */}
+      {relatedWorks.length > 0 && (
+        <section className="space-y-6 pt-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">
+                สื่อการสอนและผลงานที่เกี่ยวข้อง
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                เลือกดูสื่อประกอบการสอนอื่นๆ ในระดับชั้นและกลุ่มสาระเดียวกัน
+              </p>
+            </div>
+            <Link
+              href="/resources"
+              className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+            >
+              <span>ดูทั้งหมด</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {relatedWorks.map((rw) => (
+              <WorkCard key={rw.id} work={rw} />
+            ))}
+          </div>
+        </section>
       )}
 
-      {/* Content */}
-      <article className="prose prose-slate dark:prose-invert max-w-none text-sm sm:text-base leading-relaxed space-y-4">
-        {work.content?.split('\n\n').map((para, idx) => {
-          if (para.startsWith('# ')) {
-            return <h1 key={idx} className="text-2xl font-bold mt-6 mb-2 text-slate-900 dark:text-white">{para.replace('# ', '')}</h1>;
-          }
-          if (para.startsWith('## ')) {
-            return <h2 key={idx} className="text-xl font-bold mt-5 mb-2 text-slate-900 dark:text-white">{para.replace('## ', '')}</h2>;
-          }
-          if (para.startsWith('- ')) {
-            return (
-              <ul key={idx} className="list-disc pl-5 space-y-1">
-                {para.split('\n').map((li, lIdx) => (
-                  <li key={lIdx}>{li.replace('- ', '')}</li>
-                ))}
-              </ul>
-            );
-          }
-          return <p key={idx} className="text-slate-700 dark:text-slate-300">{para}</p>;
-        })}
-      </article>
-
-      {/* Back Button */}
-      <div className="pt-4">
+      {/* 7. BOTTOM BACK ACTION */}
+      <div className="pt-4 flex items-center justify-between border-t border-slate-200 dark:border-slate-800">
         <Link
           href="/resources"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-800 shadow-xs transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" />
-          <span>กลับคลังสื่อการสอน</span>
+          <ArrowLeft className="w-4 h-4 text-blue-600" />
+          <span>กลับคลังสื่อการสอนทั้งหมด</span>
         </Link>
       </div>
     </div>
