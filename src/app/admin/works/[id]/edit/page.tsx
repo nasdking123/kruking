@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -21,12 +21,13 @@ import {
   Check,
   Video,
   Eye,
-  ExternalLink
+  ExternalLink,
+  Trash2
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
-import { getCategories, type CategoryRow } from '@/services/works';
-import { saveWorkAction } from '@/actions/work-actions';
+import { getCategories, getWorkById, type CategoryRow } from '@/services/works';
+import { saveWorkAction, deleteWorkAction } from '@/actions/work-actions';
 import { parseDocumentUrl } from '@/lib/document-utils';
 import { getYouTubeEmbedUrl } from '@/lib/youtube';
 
@@ -70,12 +71,19 @@ const SUGGESTED_SUBJECTS = [
   'พัฒนาวิชาชีพครู / ว.PA'
 ];
 
-export default function CreateWorkPage() {
+export default function EditWorkPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
   const router = useRouter();
   const toast = useToast();
 
   const [categories, setCategories] = useState<CategoryRow[]>([]);
+  const [fetching, setFetching] = useState(true);
   const [loading, setLoading] = useState(false);
+  
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
   
@@ -91,7 +99,7 @@ export default function CreateWorkPage() {
   const [savingCat, setSavingCat] = useState(false);
 
   // Grade level selection & custom grade
-  const [gradeLevel, setGradeLevel] = useState('ประถมศึกษาปีที่ 4');
+  const [gradeLevel, setGradeLevel] = useState('ประถมศึกษาปีที่ 6');
   const [customGrade, setCustomGrade] = useState('');
   const [isCustomGrade, setIsCustomGrade] = useState(false);
 
@@ -106,26 +114,61 @@ export default function CreateWorkPage() {
   const [featured, setFeatured] = useState(false);
 
   useEffect(() => {
-    async function loadCategories() {
-      const cats = await getCategories();
-      setCategories(cats);
-      if (cats.length > 0) {
-        setCategoryId(cats[0].id);
+    async function loadData() {
+      setFetching(true);
+      try {
+        const [cats, work] = await Promise.all([
+          getCategories(),
+          getWorkById(id),
+        ]);
+
+        setCategories(cats);
+
+        if (work) {
+          setTitle(work.title || '');
+          setSlug(work.slug || '');
+          
+          const standardType = DEFAULT_WORK_TYPES.find((t) => t.value === work.type);
+          if (standardType) {
+            setType(work.type);
+            setIsCustomType(false);
+          } else {
+            setType('resource');
+            setCustomType(work.type || '');
+            setIsCustomType(true);
+          }
+
+          setCategoryId(work.category_id || (cats.length > 0 ? cats[0].id : ''));
+          
+          if (DEFAULT_GRADE_LEVELS.includes(work.grade_level || '')) {
+            setGradeLevel(work.grade_level || 'ประถมศึกษาปีที่ 6');
+            setIsCustomGrade(false);
+          } else if (work.grade_level) {
+            setGradeLevel('ประถมศึกษาปีที่ 6');
+            setCustomGrade(work.grade_level);
+            setIsCustomGrade(true);
+          }
+
+          setSubject(work.subject || 'วิทยาการคำนวณ');
+          setDescription(work.description || '');
+          setContent(work.content || '');
+          setCoverImage(work.cover_image || '');
+          setFileUrl(work.details?.file_url ? String(work.details.file_url) : '');
+          setYoutubeUrl(work.details?.youtube_url ? String(work.details.youtube_url) : '');
+          setFeatured(Boolean(work.featured));
+        } else {
+          toast.error('ไม่พบข้อมูลผลงานนี้', 'อาจถูกลบหรือไม่มีอยู่ในระบบ');
+          router.push('/admin/works');
+        }
+      } catch (err) {
+        console.error('Load work error:', err);
+      } finally {
+        setFetching(false);
       }
     }
-    loadCategories();
-  }, []);
 
-  const handleTitleChange = (val: string) => {
-    setTitle(val);
-    const autoSlug = val
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s\u0E00-\u0E7F-]/g, '')
-      .replace(/[\s_-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-    setSlug(autoSlug || `work-${Date.now()}`);
-  };
+    loadData();
+  }, [id, router, toast]);
 
   // Quick Add New Category Inline
   const handleCreateNewCategory = async (e: React.FormEvent) => {
@@ -195,6 +238,7 @@ export default function CreateWorkPage() {
       const finalGrade = isCustomGrade && customGrade.trim() ? customGrade.trim() : gradeLevel;
 
       const res = await saveWorkAction({
+        id,
         title: title.trim(),
         slug: slug.trim(),
         type: finalType,
@@ -216,8 +260,8 @@ export default function CreateWorkPage() {
       }
 
       toast.success(
-        'บันทึกสื่อการสอนสำเร็จ',
-        'สื่อการสอนของคุณถูกเผยแพร่และแสดงผลที่หน้าแรกเว็บไซต์ทันที'
+        'อัปเดตสื่อการสอนสำเร็จ',
+        'การแก้ไขข้อมูลและไฟล์ของคุณถูกบันทึกและแสดงผลทันที'
       );
 
       router.push('/admin/works');
@@ -230,8 +274,33 @@ export default function CreateWorkPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!confirm(`ยืนยันการลบผลงาน "${title}" หรือไม่?`)) return;
+    setLoading(true);
+    try {
+      await deleteWorkAction(id);
+      toast.success('ลบผลงานเรียบร้อยแล้ว');
+      router.push('/admin/works');
+      router.refresh();
+    } catch {
+      toast.error('เกิดข้อผิดพลาดในการลบ');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Real-time document embed preview
   const docInfo = parseDocumentUrl(fileUrl);
   const ytEmbedUrl = getYouTubeEmbedUrl(youtubeUrl);
+
+  if (fetching) {
+    return (
+      <div className="min-h-[450px] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <span className="text-xs text-slate-500 font-semibold">กำลังโหลดข้อมูลผลงาน...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto p-6 sm:p-10 space-y-8">
@@ -239,30 +308,42 @@ export default function CreateWorkPage() {
       <div className="flex items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-3">
           <Link
-            href="/admin"
+            href="/admin/works"
             className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-              เพิ่มเนื้อหาใหม่ (Universal Content Creator)
+              แก้ไขสื่อการสอน / ผลงาน (Edit Work)
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              สร้างสื่อการสอน ใบงาน แผนการสอน เกียรติบัตร นวัตกรรม หรือหมวดหมู่ใหม่ได้อิสระ
+              แก้ไขเนื้อหา แนบไฟล์ PDF หรือวิดีโอ YouTube พร้อมพรีวิวแบบเรียลไทม์
             </p>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={loading || !title.trim()}
-          className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all flex items-center gap-2 cursor-pointer"
-        >
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          <span>เผยแพร่เนื้อหา</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={loading}
+            className="p-2.5 rounded-xl border border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 text-xs font-bold transition-colors cursor-pointer"
+            title="ลบผลงานนี้"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={loading || !title.trim()}
+            className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all flex items-center gap-2 cursor-pointer"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            <span>บันทึกการแก้ไข</span>
+          </button>
+        </div>
       </div>
 
       {/* Form Content */}
@@ -278,8 +359,8 @@ export default function CreateWorkPage() {
               <input
                 type="text"
                 value={title}
-                onChange={(e) => handleTitleChange(e.target.value)}
-                placeholder="เช่น ใบงานการเขียนโปรแกรมแบบวนซ้ำ ป.4..."
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="เช่น รู้จักสัญลักษณ์ Flowchart..."
                 required
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -297,7 +378,7 @@ export default function CreateWorkPage() {
                   type="text"
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
-                  placeholder="worksheet-loops-p4"
+                  placeholder="รู้จักสัญลักษณ์-flowchart"
                   required
                   className="w-full px-4 py-2.5 rounded-r-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -417,28 +498,26 @@ export default function CreateWorkPage() {
           <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                เนื้อหาฉบับเต็มและคู่มือ (Markdown / HTML)
+                เนื้อหาฉบับเต็มและคู่มือ (Markdown / ตาราง / รูบริกส์)
               </label>
               <span className="text-[11px] text-slate-400">
-                รองรับหัวข้อ รายการ และลิงก์
+                รองรับหัวข้อ ตาราง (|...|) และรายการ
               </span>
             </div>
             <textarea
-              rows={12}
+              rows={14}
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="## รายละเอียดและขั้นตอนการจัดกิจกรรม&#10;&#10;1. ขั้นนำเข้าสู่บทเรียน...&#10;2. ขั้นจัดกิจกรรม...&#10;3. ขั้นสรุปและประเมินผล..."
+              placeholder="## รายละเอียดและขั้นตอนการจัดกิจกรรม&#10;&#10;| จุดประสงค์ | วิธีวัดผล |&#10;|---|---|&#10;| ความเข้าใจ | แบบทดสอบ |"
               className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs sm:text-sm font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
 
-        {/* Right 4 Cols: Meta & Fully Dynamic Settings */}
+        {/* Right 4 Cols: Meta & Dynamic Settings */}
         <div className="lg:col-span-4 space-y-6">
-          
-          {/* Box 1: Type, Category, Grade, Subject with Instant Add */}
+          {/* Box 1: Type, Category, Grade, Subject */}
           <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-5">
-            
             {/* 1.1 Type */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -467,16 +546,13 @@ export default function CreateWorkPage() {
                   ))}
                 </select>
               ) : (
-                <div className="space-y-1">
-                  <input
-                    type="text"
-                    value={customType}
-                    onChange={(e) => setCustomType(e.target.value)}
-                    placeholder="พิมพ์ประเภทที่ต้องการ เช่น plc_meeting, clip..."
-                    className="w-full px-4 py-2.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/50 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <p className="text-[10px] text-blue-600 dark:text-blue-400">ระบบจะสร้างประเภทใหม่นี้ให้ทันที</p>
-                </div>
+                <input
+                  type="text"
+                  value={customType}
+                  onChange={(e) => setCustomType(e.target.value)}
+                  placeholder="พิมพ์ประเภทที่ต้องการ..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/50 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               )}
             </div>
 
@@ -534,7 +610,7 @@ export default function CreateWorkPage() {
               )}
             </div>
 
-            {/* 1.3 Grade Level (With Custom Option) */}
+            {/* 1.3 Grade Level */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -566,7 +642,7 @@ export default function CreateWorkPage() {
                   type="text"
                   value={customGrade}
                   onChange={(e) => setCustomGrade(e.target.value)}
-                  placeholder="เช่น อนุบาล 3, ปวช. 1, บุคคลทั่วไป..."
+                  placeholder="เช่น อนุบาล 3, บุคคลทั่วไป..."
                   className="w-full px-4 py-2.5 rounded-xl border border-purple-300 dark:border-purple-700 bg-purple-50/50 dark:bg-purple-950/50 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               )}
@@ -584,8 +660,6 @@ export default function CreateWorkPage() {
                 placeholder="เช่น วิทยาการคำนวณ"
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
               />
-              
-              {/* Quick Suggestion Chips */}
               <div className="flex flex-wrap gap-1.5">
                 {SUGGESTED_SUBJECTS.map((sub) => (
                   <button
@@ -618,6 +692,12 @@ export default function CreateWorkPage() {
                 placeholder="https://images.unsplash.com/..."
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              {coverImage && (
+                <div className="mt-2 rounded-xl overflow-hidden aspect-16/9 border border-slate-200 dark:border-slate-800">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={coverImage} alt="Cover Preview" className="w-full h-full object-cover" />
+                </div>
+              )}
             </div>
 
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
@@ -638,14 +718,14 @@ export default function CreateWorkPage() {
             </div>
           </div>
 
-          {/* Publish Action Button */}
+          {/* Save Action Button */}
           <button
             type="submit"
             disabled={loading || !title.trim()}
             className="w-full py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            <span>บันทึกและเผยแพร่ทันที</span>
+            <span>บันทึกการแก้ไขทันที</span>
           </button>
         </div>
       </form>

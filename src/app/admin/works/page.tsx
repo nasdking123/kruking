@@ -11,7 +11,8 @@ import {
   ExternalLink,
   FolderOpen,
   X,
-  Loader2
+  Loader2,
+  Edit3
 } from 'lucide-react';
 import { getWorks, getCategories, type WorkWithRelations, type CategoryRow } from '@/services/works';
 import { useToast } from '@/components/ui/toast';
@@ -252,7 +253,14 @@ function AdminWorksContent() {
                         {(work.download_count || 0).toLocaleString()}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Link
+                            href={`/admin/works/${work.id}/edit`}
+                            className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950 text-slate-500 hover:text-blue-600 transition-colors"
+                            title="แก้ไขข้อมูลและไฟล์แนบ"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </Link>
                           <Link
                             href={`/${work.type === 'lesson_plan' ? 'lesson-plans' : work.type === 'worksheet' ? 'worksheets' : work.type === 'game' ? 'games' : 'resources'}/${work.slug}`}
                             target="_blank"

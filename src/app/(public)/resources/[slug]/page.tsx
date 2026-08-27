@@ -175,6 +175,7 @@ export default async function ResourceDetailPage({
 
         <DocumentPdfViewer
           fileUrl={fileUrl}
+          youtubeUrl={work.details?.youtube_url ? String(work.details.youtube_url) : null}
           title={work.title}
           coverImage={work.cover_image}
           gradeLevel={work.grade_level}

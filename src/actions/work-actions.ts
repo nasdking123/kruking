@@ -18,6 +18,8 @@ function getAdminClient() {
   return null;
 }
 
+import { injectWorkMetadata } from '@/lib/work-metadata';
+
 export async function saveWorkAction(workData: {
   id?: string;
   title: string;
@@ -30,6 +32,8 @@ export async function saveWorkAction(workData: {
   content?: string | null;
   cover_image?: string | null;
   file_url?: string | null;
+  youtube_url?: string | null;
+  doc_url?: string | null;
   featured?: boolean;
 }): Promise<{ success: boolean; data?: WorkRow; error?: string }> {
   try {
@@ -41,6 +45,13 @@ export async function saveWorkAction(workData: {
       .replace(/[\s_-]+/g, '-')
       .replace(/^-+|-+$/g, '');
 
+    // Inject file_url and youtube_url into content metadata cleanly
+    const finalContent = injectWorkMetadata(workData.content || '', {
+      file_url: workData.file_url || null,
+      youtube_url: workData.youtube_url || null,
+      doc_url: workData.doc_url || null,
+    });
+
     const recordData = {
       title: cleanTitle,
       slug: cleanSlug,
@@ -49,7 +60,7 @@ export async function saveWorkAction(workData: {
       grade_level: workData.grade_level || 'ทุกระดับชั้น / ทั่วไป',
       subject: workData.subject || 'วิทยาการคำนวณ',
       description: workData.description?.trim() || null,
-      content: workData.content || '',
+      content: finalContent,
       cover_image: workData.cover_image?.trim() || 'https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=1200&auto=format&fit=crop',
       featured: Boolean(workData.featured),
       visibility: 'public' as const,
@@ -59,54 +70,71 @@ export async function saveWorkAction(workData: {
     };
 
     let resultData: WorkRow | null = null;
-
-    // 1. Try with Server Client
     const supabase = await createClient();
-    const { data, error } = await supabase
-      .from('works')
-      .upsert(
-        {
-          ...recordData,
-          view_count: 1,
-          download_count: 0,
-          created_at: new Date().toISOString(),
-        },
-        { onConflict: 'slug' }
-      )
-      .select('*, category:categories(*)')
-      .maybeSingle();
 
-    if (error) {
-      console.warn('saveWorkAction with auth client failed, attempting with admin client...', error.message);
-      const adminClient = getAdminClient();
-      if (adminClient) {
-        const adminRes = await adminClient
-          .from('works')
-          .upsert(
-            {
-              ...recordData,
-              view_count: 1,
-              download_count: 0,
-              created_at: new Date().toISOString(),
-            },
-            { onConflict: 'slug' }
-          )
-          .select('*, category:categories(*)')
-          .maybeSingle();
+    // 1. If updating existing work by ID
+    if (workData.id) {
+      const { data, error } = await supabase
+        .from('works')
+        .update(recordData)
+        .eq('id', workData.id)
+        .select('*, category:categories(*)')
+        .maybeSingle();
 
-        if (adminRes.error) {
-          console.error('saveWorkAction admin client error:', adminRes.error);
-          return { success: false, error: adminRes.error.message };
+      if (error) {
+        const adminClient = getAdminClient();
+        if (adminClient) {
+          const adminRes = await adminClient
+            .from('works')
+            .update(recordData)
+            .eq('id', workData.id)
+            .select('*, category:categories(*)')
+            .maybeSingle();
+          if (adminRes.data) resultData = adminRes.data as unknown as WorkRow;
         }
-        resultData = adminRes.data as unknown as WorkRow;
       } else {
-        return { success: false, error: error.message };
+        resultData = data as unknown as WorkRow;
       }
     } else {
-      resultData = data as unknown as WorkRow;
+      // 2. Insert or upsert new work
+      const { data, error } = await supabase
+        .from('works')
+        .upsert(
+          {
+            ...recordData,
+            view_count: 1,
+            download_count: 0,
+            created_at: new Date().toISOString(),
+          },
+          { onConflict: 'slug' }
+        )
+        .select('*, category:categories(*)')
+        .maybeSingle();
+
+      if (error) {
+        const adminClient = getAdminClient();
+        if (adminClient) {
+          const adminRes = await adminClient
+            .from('works')
+            .upsert(
+              {
+                ...recordData,
+                view_count: 1,
+                download_count: 0,
+                created_at: new Date().toISOString(),
+              },
+              { onConflict: 'slug' }
+            )
+            .select('*, category:categories(*)')
+            .maybeSingle();
+          if (adminRes.data) resultData = adminRes.data as unknown as WorkRow;
+        }
+      } else {
+        resultData = data as unknown as WorkRow;
+      }
     }
 
-    // 2. Revalidate all relevant pages to reflect the new media immediately
+    // 3. Revalidate all relevant dynamic and static routes
     revalidatePath('/');
     revalidatePath('/resources');
     revalidatePath('/worksheets');
@@ -123,7 +151,7 @@ export async function saveWorkAction(workData: {
 
     return { 
       success: true, 
-      data: (resultData || { id: `work-${Date.now()}`, ...recordData, view_count: 1, download_count: 0, created_at: new Date().toISOString(), deleted_at: null, author_id: null }) as WorkRow 
+      data: (resultData || { id: workData.id || `work-${Date.now()}`, ...recordData, view_count: 1, download_count: 0, created_at: new Date().toISOString(), deleted_at: null, author_id: null }) as WorkRow 
     };
   } catch (err: unknown) {
     console.error('saveWorkAction exception:', err);

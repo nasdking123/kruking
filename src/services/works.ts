@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { parseWorkContent } from '@/lib/work-metadata';
 import type { Database } from '@/types/database';
 
 export type WorkRow = Database['public']['Tables']['works']['Row'];
@@ -50,7 +51,19 @@ export async function getWorks(options?: {
       return [];
     }
 
-    let filtered = data as unknown as WorkWithRelations[];
+    let filtered = (data as unknown as WorkRow[]).map((w) => {
+      const { cleanContent, metadata } = parseWorkContent(w.content);
+      return {
+        ...w,
+        content: cleanContent,
+        details: {
+          ...metadata,
+          file_url: metadata.file_url || null,
+          youtube_url: metadata.youtube_url || null,
+        },
+      } as WorkWithRelations;
+    });
+
     if (options?.search) {
       const q = options.search.toLowerCase();
       filtered = filtered.filter(
@@ -113,7 +126,50 @@ export async function getWorkBySlug(slug: string): Promise<WorkWithRelations | n
     if (!data) {
       return null;
     }
-    return data as unknown as WorkWithRelations;
+
+    const workRow = data as unknown as WorkRow;
+    const { cleanContent, metadata } = parseWorkContent(workRow.content);
+
+    return {
+      ...workRow,
+      content: cleanContent,
+      details: {
+        ...metadata,
+        file_url: metadata.file_url || null,
+        youtube_url: metadata.youtube_url || null,
+      },
+    } as unknown as WorkWithRelations;
+  } catch {
+    return null;
+  }
+}
+
+export async function getWorkById(id: string): Promise<WorkWithRelations | null> {
+  try {
+    if (!id) return null;
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('works')
+      .select('*, category:categories(*)')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error || !data) {
+      return null;
+    }
+
+    const workRow = data as unknown as WorkRow;
+    const { cleanContent, metadata } = parseWorkContent(workRow.content);
+
+    return {
+      ...workRow,
+      content: cleanContent,
+      details: {
+        ...metadata,
+        file_url: metadata.file_url || null,
+        youtube_url: metadata.youtube_url || null,
+      },
+    } as unknown as WorkWithRelations;
   } catch {
     return null;
   }
