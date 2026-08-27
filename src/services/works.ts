@@ -69,14 +69,48 @@ export async function getWorks(options?: {
 
 export async function getWorkBySlug(slug: string): Promise<WorkWithRelations | null> {
   try {
+    if (!slug) return null;
+    const rawSlug = String(slug).trim();
+    let decodedSlug = rawSlug;
+    try {
+      decodedSlug = decodeURIComponent(rawSlug).trim();
+    } catch {
+      decodedSlug = rawSlug;
+    }
+
     const supabase = createClient();
-    const { data, error } = await supabase
+    
+    // 1. Query with decoded slug
+    let { data, error } = await supabase
       .from('works')
       .select('*, category:categories(*)')
-      .eq('slug', slug)
+      .eq('slug', decodedSlug)
       .maybeSingle();
 
-    if (error || !data) {
+    // 2. Fallback to raw slug if different
+    if ((!data || error) && decodedSlug !== rawSlug) {
+      const res = await supabase
+        .from('works')
+        .select('*, category:categories(*)')
+        .eq('slug', rawSlug)
+        .maybeSingle();
+      if (res.data) data = res.data;
+    }
+
+    // 3. Fallback to ID match if UUID
+    if (!data) {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(decodedSlug);
+      if (isUuid) {
+        const res = await supabase
+          .from('works')
+          .select('*, category:categories(*)')
+          .eq('id', decodedSlug)
+          .maybeSingle();
+        if (res.data) data = res.data;
+      }
+    }
+
+    if (!data) {
       return null;
     }
     return data as unknown as WorkWithRelations;

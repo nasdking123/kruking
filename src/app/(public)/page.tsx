@@ -35,6 +35,16 @@ export default async function HomePage() {
   const featuredWorks = allWorks.filter((w) => w.featured).slice(0, 4);
   const worksheets = allWorks.filter((w) => w.type === 'worksheet').slice(0, 4);
   const lessonPlans = allWorks.filter((w) => w.type === 'lesson_plan').slice(0, 4);
+  const resourceWorks = allWorks.filter(
+    (w) =>
+      w.type === 'resource' ||
+      w.type === 'media' ||
+      w.type === 'game' ||
+      w.type === 'teaching' ||
+      w.type === 'innovation' ||
+      (!['worksheet', 'lesson_plan'].includes(w.type))
+  );
+  const latestResources = resourceWorks.slice(0, 8);
 
   return (
     <div className="space-y-16 pb-20">
@@ -335,6 +345,62 @@ export default async function HomePage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {featuredWorks.map((work) => (
+                <WorkCard key={work.id} work={work} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* 5. TEACHING MEDIA & RESOURCES SECTION (สื่อและนวัตกรรมการเรียนรู้ล่าสุด) */}
+      {(enabledKeys.has('latest_resources') || !sections.some((s) => s.section_key === 'latest_resources')) && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-[11px] font-bold mb-1">
+                <FolderOpen className="w-3.5 h-3.5 text-blue-500" />
+                <span>คลังสื่อและนวัตกรรมการสอน</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
+                สื่อการสอนและนวัตกรรมการเรียนรู้ล่าสุด
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                สื่อการสอน สไลด์บรรยาย อินโฟกราฟิก สื่อดิจิทัล และเกมการเรียนรู้ Active Learning
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/admin/works/new"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/60 text-xs font-bold transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ เพิ่มสื่อใหม่</span>
+              </Link>
+              <Link
+                href="/resources"
+                className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+              >
+                <span>ดูคลังสื่อทั้งหมด ({resourceWorks.length})</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          {latestResources.length === 0 ? (
+            <div className="p-8 rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 text-center space-y-3">
+              <FolderOpen className="w-8 h-8 text-slate-400 mx-auto" />
+              <p className="text-xs text-slate-500 font-semibold">ยังไม่มีสื่อการสอนในระบบ</p>
+              <Link
+                href="/admin/works/new"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ เพิ่มสื่อการสอนชิ้นแรก</span>
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {latestResources.map((work) => (
                 <WorkCard key={work.id} work={work} />
               ))}
             </div>

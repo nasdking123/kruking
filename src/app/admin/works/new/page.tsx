@@ -23,6 +23,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
 import { getCategories, type CategoryRow } from '@/services/works';
+import { saveWorkAction } from '@/actions/work-actions';
 
 const DEFAULT_WORK_TYPES = [
   { value: 'resource', label: 'สื่อการสอน (Resource)', icon: FolderOpen },
@@ -184,42 +185,39 @@ export default function CreateWorkPage() {
 
     setLoading(true);
     try {
-      const supabase = createClient();
       const finalType = isCustomType && customType.trim() ? customType.trim() : type;
       const finalGrade = isCustomGrade && customGrade.trim() ? customGrade.trim() : gradeLevel;
 
-      const newWork = {
-        title,
-        slug,
+      const res = await saveWorkAction({
+        title: title.trim(),
+        slug: slug.trim(),
         type: finalType,
         category_id: categoryId || null,
         grade_level: finalGrade,
         subject: subject || 'ทั่วไป',
-        description,
-        content,
+        description: description.trim() || null,
+        content: content || '',
         cover_image: coverImage || 'https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=1200&auto=format&fit=crop',
+        file_url: fileUrl || null,
         featured,
-        view_count: 1,
-        download_count: 0,
-      };
+      });
 
-      const { error } = await supabase
-        .from('works')
-        .insert([newWork])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Supabase error:', error);
+      if (!res.success) {
+        toast.error('เกิดข้อผิดพลาดในการบันทึก', res.error || 'โปรดลองอีกครั้ง');
+        setLoading(false);
+        return;
       }
-      toast.success('บันทึกเนื้อหาสำเร็จ', 'เนื้อหาใหม่ของคุณถูกเผยแพร่สู่ระบบเรียบร้อยแล้ว');
+
+      toast.success(
+        'บันทึกสื่อการสอนสำเร็จ',
+        'สื่อการสอนของคุณถูกเผยแพร่และแสดงผลที่หน้าแรกเว็บไซต์ทันที'
+      );
 
       router.push('/admin/works');
       router.refresh();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Save error:', err);
-      toast.success('บันทึกสำเร็จ', 'เนื้อหาของคุณถูกเผยแพร่เรียบร้อยแล้ว');
-      router.push('/admin/works');
+      toast.error('เกิดข้อผิดพลาด', (err as Error).message || 'โปรดลองอีกครั้ง');
     } finally {
       setLoading(false);
     }

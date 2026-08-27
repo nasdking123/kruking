@@ -44,7 +44,13 @@ export function WorkCard({ work }: WorkCardProps) {
   let href = `/portfolio/${work.slug}`;
   if (work.type === 'resource') href = `/resources/${work.slug}`;
   if (work.type === 'worksheet') href = `/worksheets/${work.slug}`;
+  if (work.type === 'lesson_plan') href = `/lesson-plans/${work.slug}`;
   if (work.type === 'game') href = `/games/${work.slug}`;
+  if (work.type === 'teaching') href = `/teaching/${work.slug}`;
+  if (work.type === 'innovation') href = `/innovation/${work.slug}`;
+  if (work.type === 'research') href = `/research/${work.slug}`;
+  if (work.type === 'article') href = `/articles/${work.slug}`;
+  if (work.type === 'activity') href = `/activities/${work.slug}`;
 
   return (
     <div className="group flex flex-col justify-between rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-200 overflow-hidden">

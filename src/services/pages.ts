@@ -96,18 +96,36 @@ export async function getPages(): Promise<PageRow[]> {
 
 export async function getPageBySlug(slug: string): Promise<PageRow | null> {
   try {
+    if (!slug) return null;
+    let decodedSlug = slug.trim();
+    try {
+      decodedSlug = decodeURIComponent(decodedSlug);
+    } catch {
+      // ignore
+    }
+
     const supabase = createClient();
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('pages')
       .select('*')
-      .eq('slug', slug)
+      .eq('slug', decodedSlug)
       .is('deleted_at', null)
       .maybeSingle();
 
-    if (!error && data) {
+    if ((!data || error) && decodedSlug !== slug) {
+      const res = await supabase
+        .from('pages')
+        .select('*')
+        .eq('slug', slug)
+        .is('deleted_at', null)
+        .maybeSingle();
+      if (res.data) data = res.data;
+    }
+
+    if (data) {
       return data as PageRow;
     }
-    return INITIAL_PAGES.find((p) => p.slug === slug) || null;
+    return INITIAL_PAGES.find((p) => p.slug === decodedSlug || p.slug === slug) || null;
   } catch {
     return INITIAL_PAGES.find((p) => p.slug === slug) || null;
   }

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { getWorks, getCategories, type WorkWithRelations, type CategoryRow } from '@/services/works';
 import { useToast } from '@/components/ui/toast';
+import { deleteWorkAction } from '@/actions/work-actions';
 
 const TYPE_FILTERS = [
   { value: 'all', label: 'ทุกประเภท' },
@@ -80,9 +81,10 @@ function AdminWorksContent() {
     return matchesSearch && matchesType && matchesCategory;
   });
 
-  const handleDelete = (id: string, title: string) => {
+  const handleDelete = async (id: string, title: string) => {
     if (confirm(`คุณต้องการลบ "${title}" ใช่หรือไม่?`)) {
       setWorks((prev) => prev.filter((w) => w.id !== id));
+      await deleteWorkAction(id);
       toast.success('ลบข้อมูลสำเร็จ', `ลบผลงาน "${title}" เรียบร้อยแล้ว`);
     }
   };
