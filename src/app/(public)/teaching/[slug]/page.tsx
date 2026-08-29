@@ -2,18 +2,24 @@ import React from 'react';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Image from 'next/image';
 import { 
   ChevronRight, 
   Calendar, 
   Eye, 
   ArrowLeft, 
   Sparkles,
-  Wrench
+  Presentation,
+  Award,
+  BookOpen
 } from 'lucide-react';
-import { getWorkBySlug, trackWorkView } from '@/services/works';
+import { getWorkBySlug, getWorks, trackWorkView } from '@/services/works';
+import { getSettings } from '@/services/settings';
 import { formatDateThai } from '@/lib/utils';
 import { ShareButtons } from '@/components/public/share-buttons';
-import { Badge } from '@/components/ui/badge';
+import { RichMarkdown } from '@/components/common/rich-markdown';
+import { DocumentPdfViewer } from '@/components/public/document-pdf-viewer';
+import { WorkCard } from '@/components/public/work-card';
 
 export async function generateMetadata({
   params,
@@ -27,6 +33,11 @@ export async function generateMetadata({
   return {
     title: `${work.title} | การจัดการเรียนรู้ครูคิง`,
     description: work.description || undefined,
+    openGraph: {
+      title: work.title,
+      description: work.description || undefined,
+      images: work.cover_image ? [work.cover_image] : undefined,
+    },
   };
 }
 
@@ -36,7 +47,11 @@ export default async function TeachingDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const work = await getWorkBySlug(slug);
+  const [work, settings, allWorks] = await Promise.all([
+    getWorkBySlug(slug),
+    getSettings(),
+    getWorks({ type: 'teaching', limit: 6 }),
+  ]);
 
   if (!work) {
     notFound();
@@ -44,44 +59,73 @@ export default async function TeachingDetailPage({
 
   await trackWorkView(work.id);
 
+  const relatedWorks = allWorks
+    .filter((w) => w.id !== work.id)
+    .slice(0, 4);
+
+  const fileUrl = work.details?.file_url 
+    ? String(work.details.file_url) 
+    : work.details?.pdf_url 
+      ? String(work.details.pdf_url) 
+      : null;
+
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-        <Link href="/" className="hover:text-blue-600 transition-colors">หน้าแรก</Link>
+      <nav className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+        <Link href="/" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+          หน้าแรก
+        </Link>
         <ChevronRight className="w-3.5 h-3.5" />
-        <Link href="/teaching" className="hover:text-blue-600 transition-colors">การจัดการเรียนรู้</Link>
+        <Link href="/teaching" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+          การจัดการเรียนรู้ & โชว์เคส
+        </Link>
         <ChevronRight className="w-3.5 h-3.5" />
-        <span className="text-slate-900 dark:text-white font-medium truncate max-w-xs">{work.title}</span>
+        <span className="text-slate-900 dark:text-white font-medium truncate max-w-xs sm:max-w-md">
+          {work.title}
+        </span>
       </nav>
 
-      {/* Header */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="primary">Teaching Showcase</Badge>
-          {work.grade_level && <Badge variant="outline">{work.grade_level}</Badge>}
-          {work.subject && <Badge variant="outline">{work.subject}</Badge>}
+      {/* Hero Header */}
+      <div className="p-6 sm:p-10 rounded-3xl bg-gradient-to-tr from-cyan-950 via-slate-900 to-blue-950 text-white shadow-2xl relative overflow-hidden space-y-6">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex items-center gap-2 flex-wrap relative z-10">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 text-xs font-bold backdrop-blur-xs">
+            <Presentation className="w-3.5 h-3.5" />
+            <span>Teaching Showcase</span>
+          </div>
+          {work.grade_level && (
+            <span className="px-3 py-1 rounded-full bg-white/10 text-white border border-white/10 text-xs font-semibold backdrop-blur-xs">
+              {work.grade_level}
+            </span>
+          )}
+          {work.subject && (
+            <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30 text-xs font-semibold backdrop-blur-xs">
+              {work.subject}
+            </span>
+          )}
         </div>
 
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-snug relative z-10">
           {work.title}
         </h1>
 
         {work.description && (
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+          <p className="text-sm sm:text-base text-slate-200 leading-relaxed max-w-3xl font-normal relative z-10">
             {work.description}
           </p>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-4 pt-4 pb-4 border-y border-slate-200 dark:border-slate-800 text-xs text-slate-500">
-          <div className="flex items-center gap-4 flex-wrap">
-            <span className="flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-blue-500" />
+        <div className="pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-300 relative z-10">
+          <div className="flex items-center gap-5 flex-wrap">
+            <span className="flex items-center gap-1.5 text-cyan-300">
+              <Calendar className="w-4 h-4 text-cyan-400" />
               <span>{formatDateThai(work.published_at || work.created_at)}</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <Eye className="w-3.5 h-3.5 text-slate-400" />
-              <span>{work.view_count} ครั้ง</span>
+              <Eye className="w-4 h-4 text-slate-400" />
+              <span>{work.view_count || 1} ครั้ง</span>
             </span>
           </div>
 
@@ -89,70 +133,114 @@ export default async function TeachingDetailPage({
         </div>
       </div>
 
-      {/* Pedagogy Card */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="p-4 rounded-2xl bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200/80 dark:border-cyan-900/60 space-y-1">
-          <div className="flex items-center gap-1.5 text-cyan-700 dark:text-cyan-300 font-bold text-xs">
-            <Sparkles className="w-4 h-4" />
-            <span>รูปแบบการสอน (Pedagogy)</span>
+      {/* Interactive Document & Video Viewer */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-slate-900 dark:text-white font-extrabold text-base sm:text-lg">
+            <BookOpen className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+            <span>พรีวิวสื่อและวิดีโอประกอบการสอน (Media Viewer)</span>
           </div>
-          <p className="text-xs text-slate-700 dark:text-slate-300">
-            {work.details?.pedagogy ? String(work.details.pedagogy) : 'Active Learning & Inquiry'}
-          </p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/60 space-y-1">
-          <div className="flex items-center gap-1.5 text-blue-700 dark:text-blue-300 font-bold text-xs">
-            <Wrench className="w-4 h-4" />
-            <span>เครื่องมือและอุปกรณ์ (Tools)</span>
+        <DocumentPdfViewer
+          fileUrl={fileUrl}
+          youtubeUrl={work.details?.youtube_url ? String(work.details.youtube_url) : null}
+          title={work.title}
+          coverImage={work.cover_image}
+          gradeLevel={work.grade_level}
+          subject={work.subject}
+          fallbackContent={work.content}
+        />
+      </section>
+
+      {/* Structured Content */}
+      <section className="p-6 sm:p-10 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-6">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-cyan-600" />
+            <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">
+              รายละเอียดกระบวนการจัดการเรียนรู้
+            </h2>
           </div>
-          <p className="text-xs text-slate-700 dark:text-slate-300">
-            {work.details?.tools ? String(work.details.tools) : 'อุปกรณ์การสอนและสื่อดิจิทัล'}
+        </div>
+
+        <RichMarkdown content={work.content} />
+      </section>
+
+      {/* Teacher Profile Card */}
+      <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-cyan-50/80 via-slate-50 to-blue-50/50 dark:from-slate-900 dark:via-slate-900 dark:to-cyan-950/40 border border-cyan-200/60 dark:border-cyan-900/40 flex flex-col sm:flex-row items-center gap-6 shadow-xs">
+        <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden border-2 border-white dark:border-slate-800 shadow-md shrink-0">
+          <Image
+            src={settings.teacher_avatar_url || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=600&auto=format&fit=crop"}
+            alt={settings.teacher_name || "ครูคิง"}
+            fill
+            unoptimized
+            className="object-cover"
+          />
+        </div>
+
+        <div className="space-y-2 text-center sm:text-left flex-1 min-w-0">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300 text-[10px] font-bold">
+            <Award className="w-3 h-3 text-amber-500" />
+            <span>ครูผู้จัดทำโชว์เคส</span>
+          </div>
+
+          <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
+            {settings.teacher_name || "ครูคิง (Kru King)"}
+          </h3>
+
+          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2">
+            {settings.teacher_bio || "ครูผู้สอนกลุ่มสาระวิทยาศาสตร์และเทคโนโลยี • สังคมศึกษา มุ่งมั่นสร้างสรรค์นวัตกรรมการสอน Active Learning"}
           </p>
+
+          <div className="pt-2 flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs">
+            <Link
+              href="/about"
+              className="font-bold text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1"
+            >
+              <span>ดูประวัติและผลงานครูคิง</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </div>
       </div>
 
-      {/* Cover Image */}
-      {work.cover_image && (
-        <div className="rounded-2xl overflow-hidden shadow-md border border-slate-200 dark:border-slate-800">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={work.cover_image}
-            alt={work.title}
-            className="w-full max-h-[450px] object-cover"
-          />
-        </div>
+      {/* Related Works */}
+      {relatedWorks.length > 0 && (
+        <section className="space-y-6 pt-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">
+                โชว์เคสและผลงานการสอนอื่นๆ
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                ดูผลงานการสอนเพิ่มเติมของครูคิง
+              </p>
+            </div>
+            <Link
+              href="/teaching"
+              className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1"
+            >
+              <span>ดูทั้งหมด</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {relatedWorks.map((rw) => (
+              <WorkCard key={rw.id} work={rw} />
+            ))}
+          </div>
+        </section>
       )}
 
-      {/* Content */}
-      <article className="prose prose-slate dark:prose-invert max-w-none text-sm sm:text-base leading-relaxed space-y-4">
-        {work.content?.split('\n\n').map((para, idx) => {
-          if (para.startsWith('# ')) {
-            return <h1 key={idx} className="text-2xl font-bold mt-6 mb-2 text-slate-900 dark:text-white">{para.replace('# ', '')}</h1>;
-          }
-          if (para.startsWith('## ')) {
-            return <h2 key={idx} className="text-xl font-bold mt-5 mb-2 text-slate-900 dark:text-white">{para.replace('## ', '')}</h2>;
-          }
-          if (para.startsWith('- ')) {
-            return (
-              <ul key={idx} className="list-disc pl-5 space-y-1">
-                {para.split('\n').map((li, lIdx) => (
-                  <li key={lIdx}>{li.replace('- ', '')}</li>
-                ))}
-              </ul>
-            );
-          }
-          return <p key={idx} className="text-slate-700 dark:text-slate-300">{para}</p>;
-        })}
-      </article>
-
-      {/* Back Button */}
-      <div className="pt-4">
+      {/* Back Action */}
+      <div className="pt-4 flex items-center justify-between border-t border-slate-200 dark:border-slate-800">
         <Link
           href="/teaching"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-800 shadow-xs transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4 text-cyan-600" />
           <span>กลับหน้ารวมโชว์เคสการสอน</span>
         </Link>
       </div>
