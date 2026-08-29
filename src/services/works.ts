@@ -92,13 +92,17 @@ export async function getWorkBySlug(slug: string): Promise<WorkWithRelations | n
     }
 
     const supabase = createClient();
-    
+    let data = null as WorkRow | null;
+    let error: { message?: string } | null = null;
+
     // 1. Query with decoded slug
-    let { data, error } = await supabase
+    const firstResult = await supabase
       .from('works')
       .select('*, category:categories(*)')
       .eq('slug', decodedSlug)
       .maybeSingle();
+    data = firstResult.data as WorkRow | null;
+    error = firstResult.error;
 
     // 2. Fallback to raw slug if different
     if ((!data || error) && decodedSlug !== rawSlug) {
@@ -107,7 +111,8 @@ export async function getWorkBySlug(slug: string): Promise<WorkWithRelations | n
         .select('*, category:categories(*)')
         .eq('slug', rawSlug)
         .maybeSingle();
-      if (res.data) data = res.data;
+      if (res.data) data = res.data as WorkRow;
+      if (!error && res.error) error = res.error;
     }
 
     // 3. Fallback to ID match if UUID
@@ -119,7 +124,8 @@ export async function getWorkBySlug(slug: string): Promise<WorkWithRelations | n
           .select('*, category:categories(*)')
           .eq('id', decodedSlug)
           .maybeSingle();
-        if (res.data) data = res.data;
+        if (res.data) data = res.data as WorkRow;
+        if (!error && res.error) error = res.error;
       }
     }
 

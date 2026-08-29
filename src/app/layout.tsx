@@ -3,6 +3,7 @@ import { Prompt, Sarabun } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ToastProvider } from '@/components/ui/toast';
+import { RealtimeContentRefresh } from '@/components/common/realtime-content-refresh';
 
 const prompt = Prompt({
   weight: ['400', '500', '600', '700'],
@@ -98,6 +99,7 @@ export default function RootLayout({
           disableTransitionOnChange={false}
         >
           <ToastProvider>
+            <RealtimeContentRefresh />
             {children}
           </ToastProvider>
         </ThemeProvider>

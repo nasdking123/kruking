@@ -13,14 +13,12 @@ import {
   UserCheck,
   Award,
   Sparkles,
-  BookOpen,
-  Share2
+  BookOpen
 } from 'lucide-react';
 import { getWorkBySlug, getWorks, trackWorkView } from '@/services/works';
 import { getSettings } from '@/services/settings';
 import { formatDateThai } from '@/lib/utils';
 import { ShareButtons } from '@/components/public/share-buttons';
-import { Badge } from '@/components/ui/badge';
 import { RichMarkdown } from '@/components/common/rich-markdown';
 import { DocumentPdfViewer } from '@/components/public/document-pdf-viewer';
 import { WorkCard } from '@/components/public/work-card';

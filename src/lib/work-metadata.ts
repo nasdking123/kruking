@@ -69,7 +69,7 @@ export function injectWorkMetadata(
   metadata: { file_url?: string | null; youtube_url?: string | null; doc_url?: string | null }
 ): string {
   // Strip any existing metadata tags first
-  let result = content
+  const result = content
     .replace(/<!--\s*META_FILE_URL:.*?\s*-->\n?/g, '')
     .replace(/<!--\s*META_YOUTUBE_URL:.*?\s*-->\n?/g, '')
     .replace(/<!--\s*META_DOC_URL:.*?\s*-->\n?/g, '')

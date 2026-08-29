@@ -57,11 +57,16 @@ export async function getDownloadBySlug(slug: string): Promise<DownloadRow | nul
     }
 
     const supabase = createClient();
-    let { data, error } = await supabase
+    let data = null as DownloadRow | null;
+    let error: { message?: string } | null = null;
+
+    const firstResult = await supabase
       .from('downloads')
       .select('*')
       .eq('slug', decodedSlug)
       .maybeSingle();
+    data = firstResult.data as DownloadRow | null;
+    error = firstResult.error;
 
     if ((!data || error) && decodedSlug !== slug) {
       const res = await supabase
@@ -69,7 +74,8 @@ export async function getDownloadBySlug(slug: string): Promise<DownloadRow | nul
         .select('*')
         .eq('slug', slug)
         .maybeSingle();
-      if (res.data) data = res.data;
+      if (res.data) data = res.data as DownloadRow;
+      if (!error && res.error) error = res.error;
     }
 
     if (error || !data) {

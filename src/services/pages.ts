@@ -105,12 +105,17 @@ export async function getPageBySlug(slug: string): Promise<PageRow | null> {
     }
 
     const supabase = createClient();
-    let { data, error } = await supabase
+    let data = null as PageRow | null;
+    let error: { message?: string } | null = null;
+
+    const firstResult = await supabase
       .from('pages')
       .select('*')
       .eq('slug', decodedSlug)
       .is('deleted_at', null)
       .maybeSingle();
+    data = firstResult.data as PageRow | null;
+    error = firstResult.error;
 
     if ((!data || error) && decodedSlug !== slug) {
       const res = await supabase
@@ -119,7 +124,8 @@ export async function getPageBySlug(slug: string): Promise<PageRow | null> {
         .eq('slug', slug)
         .is('deleted_at', null)
         .maybeSingle();
-      if (res.data) data = res.data;
+      if (res.data) data = res.data as PageRow;
+      if (!error && res.error) error = res.error;
     }
 
     if (data) {

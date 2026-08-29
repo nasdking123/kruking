@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   FileText, 
   Download, 
@@ -8,12 +8,10 @@ import {
   Maximize2, 
   Minimize2, 
   Printer, 
-  Eye, 
   Loader2, 
   Sparkles,
   Layers,
-  Video,
-  Play
+  Video
 } from 'lucide-react';
 import { parseDocumentUrl } from '@/lib/document-utils';
 import { getYouTubeEmbedUrl } from '@/lib/youtube';
@@ -45,19 +43,9 @@ export function DocumentPdfViewer({
   const ytEmbedUrl = getYouTubeEmbedUrl(youtubeUrl);
   const hasEmbedYt = Boolean(ytEmbedUrl);
 
-  const [activeTab, setActiveTab] = useState<'pdf' | 'video' | 'summary'>(
+  const [activeTab, setActiveTab] = useState<'pdf' | 'video' | 'summary'>(() =>
     hasEmbedPdf ? 'pdf' : hasEmbedYt ? 'video' : 'summary'
   );
-
-  useEffect(() => {
-    if (hasEmbedPdf) {
-      setActiveTab('pdf');
-    } else if (hasEmbedYt) {
-      setActiveTab('video');
-    } else {
-      setActiveTab('summary');
-    }
-  }, [hasEmbedPdf, hasEmbedYt]);
 
   const downloadLink = docInfo?.downloadUrl || fileUrl || '#';
 
@@ -275,6 +263,11 @@ export function DocumentPdfViewer({
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   สามารถดาวน์โหลดหรือสั่งพิมพ์เอกสารสำหรับนำไปจัดกิจกรรมในห้องเรียนได้ทันที
                 </p>
+                {fallbackContent && (
+                  <p className="mt-3 text-xs text-slate-600 dark:text-slate-300 whitespace-pre-line max-w-2xl">
+                    {fallbackContent}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <button

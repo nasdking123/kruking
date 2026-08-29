@@ -4,9 +4,7 @@ import React, { useState } from 'react';
 import { 
   CheckCircle2, 
   Sparkles, 
-  HelpCircle, 
   Lightbulb, 
-  FileText,
   ChevronRight,
   ExternalLink,
   Copy,
