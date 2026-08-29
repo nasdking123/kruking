@@ -16,7 +16,7 @@ import {
   Award,
   GraduationCap
 } from 'lucide-react';
-import { getWorks, getCategories } from '@/services/works';
+import { getWorks } from '@/services/works';
 import { getHomepageSections } from '@/services/homepage';
 import { getSettings } from '@/services/settings';
 import { WorkCard } from '@/components/public/work-card';
@@ -30,7 +30,6 @@ export default async function HomePage() {
   const enabledKeys = new Set(sections.filter((s) => s.is_enabled).map((s) => s.section_key));
 
   const allWorks = await getWorks();
-  const categories = await getCategories();
 
   const featuredWorks = allWorks.filter((w) => w.featured).slice(0, 4);
   const worksheets = allWorks.filter((w) => w.type === 'worksheet').slice(0, 4);
@@ -268,45 +267,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 3. CATEGORIES HORIZONTAL SCROLL / GRID */}
-      {enabledKeys.has('categories') && categories.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
-                หมวดหมู่สื่อและกลุ่มสาระ
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                เลือกดูสื่อตามระดับชั้นและกลุ่มสาระการเรียนรู้
-              </p>
-            </div>
-            <Link
-              href="/resources"
-              className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-            >
-              <span>ดูทั้งหมด</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {categories.map((cat) => (
-              <Link
-                key={cat.id}
-                href={`/resources?category=${cat.slug}`}
-                className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-blue-400 hover:shadow-md hover:-translate-y-0.5 transition-all text-center group flex flex-col items-center justify-center gap-2"
-              >
-                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-colors flex items-center justify-center shadow-xs">
-                  <FolderOpen className="w-5 h-5" />
-                </div>
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1">
-                  {cat.name}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* 4. FEATURED WORKS HIGHLIGHT */}
       {enabledKeys.has('featured') && (
