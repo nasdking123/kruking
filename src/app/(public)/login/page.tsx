@@ -3,7 +3,8 @@
 import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Lock, User, BookOpen, ArrowRight, Loader2 } from 'lucide-react';
+import Image from 'next/image';
+import { Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
 
@@ -70,9 +71,16 @@ function LoginForm() {
   return (
     <div className="w-full max-w-md space-y-6">
       {/* Brand Header */}
-      <div className="text-center space-y-2">
-        <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white mx-auto shadow-lg shadow-blue-500/30">
-          <BookOpen className="w-6 h-6" />
+      <div className="text-center space-y-3">
+        <div className="relative w-20 h-20 rounded-full overflow-hidden mx-auto shadow-xl shadow-amber-500/20 ring-4 ring-amber-400/30">
+          <Image
+            src="/images/logo.png"
+            alt="ห้องสื่อครูคิง"
+            fill
+            sizes="80px"
+            className="object-cover"
+            priority
+          />
         </div>
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
           เข้าสู่ระบบผู้ดูแลหลังบ้าน

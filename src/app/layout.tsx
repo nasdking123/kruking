@@ -46,11 +46,33 @@ export const metadata: Metadata = {
     siteName: 'ห้องสื่อครูคิง',
     title: 'ห้องสื่อครูคิง | Education Platform + CMS',
     description: 'แหล่งรวมสื่อการเรียนรู้ ผลงาน นวัตกรรม และประสบการณ์การสอน',
+    images: [
+      {
+        url: '/images/logo.png',
+        width: 1024,
+        height: 1024,
+        alt: 'ห้องสื่อครูคิง',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'ห้องสื่อครูคิง | Education Platform + CMS',
     description: 'แหล่งรวมสื่อการเรียนรู้ ผลงาน นวัตกรรม และประสบการณ์การสอน',
+    images: ['/images/logo.png'],
+  },
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/images/logo.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
   },
   robots: {
     index: true,
@@ -79,6 +101,11 @@ export default function RootLayout({
   return (
     <html lang="th" suppressHydrationWarning className={`${prompt.variable} ${sarabun.variable}`}>
       <head>
+        <link rel="icon" href="/favicon.ico?v=3" sizes="any" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=3" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=3" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=3" />
+        <link rel="shortcut icon" href="/favicon.ico?v=3" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

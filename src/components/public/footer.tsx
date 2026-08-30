@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { BookOpen, Mail, Phone, ExternalLink } from 'lucide-react';
 
 export function PublicFooter() {
@@ -9,8 +10,14 @@ export function PublicFooter() {
           {/* Brand Col */}
           <div className="space-y-4 md:col-span-1">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold">
-                <BookOpen className="w-4 h-4" />
+              <div className="relative w-8 h-8 rounded-full overflow-hidden shadow-xs ring-1 ring-slate-200 dark:ring-slate-800 shrink-0">
+                <Image
+                  src="/images/logo.png"
+                  alt="ห้องสื่อครูคิง"
+                  fill
+                  sizes="32px"
+                  className="object-cover"
+                />
               </div>
               <span className="font-bold text-slate-900 dark:text-white text-base">
                 ห้องสื่อครูคิง

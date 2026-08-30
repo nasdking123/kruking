@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
@@ -127,8 +128,14 @@ export function AdminSidebar({
         {/* Brand */}
         <div className="h-16 px-6 border-b border-slate-800 flex items-center justify-between">
           <Link href="/admin" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 font-bold">
-              <ShieldCheck className="w-5 h-5" />
+            <div className="relative w-9 h-9 rounded-full overflow-hidden shadow-md ring-1 ring-amber-400/40 shrink-0">
+              <Image
+                src="/images/logo.png"
+                alt="ห้องสื่อครูคิง"
+                fill
+                sizes="36px"
+                className="object-cover"
+              />
             </div>
             <div>
               <span className="font-bold text-sm text-white block leading-tight">

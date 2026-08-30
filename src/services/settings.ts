@@ -13,7 +13,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   teacher_name: 'ครูจักรพงษ์ สำรองพันธ์ (ครูคิง)',
   teacher_title: 'ครูผู้สอนกลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี • สังคมศึกษา',
   teacher_bio: 'มุ่งมั่นพัฒนาสื่อนวัตกรรมการจัดการเรียนรู้แบบ Active Learning 5E และการคิดเชิงคำนวณ เพื่อให้ผู้เรียนทุกคนสนุกและเกิดทักษะในชีวิตจริง',
-  teacher_avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=600&auto=format&fit=crop',
+  teacher_avatar_url: '/images/logo.png',
   banner_cover_url: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=1200&auto=format&fit=crop',
   social_links: {
     facebook: 'https://facebook.com/kruking',
